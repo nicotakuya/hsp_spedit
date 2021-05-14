@@ -1,0 +1,1982 @@
+// sprite editor
+// for HSP 3.x(windows)
+// by takuya matsubara
+
+#define COL_MAX  16  //16色BMP カラーテーブルの数
+#define BINPACK   8  //16色BMP 1バイトパックするbit数
+#define BITPIX    4  //16色BMP 1ピクセルあたりのビット数 4bit=16色
+#define INFOHSIZE 40 //16色BMP INFOヘッダサイズ
+#define FILEHSIZE 14 //16色BMP ヘッダサイズ
+
+#define TOUMEI_R	0	//透明
+#define TOUMEI_G	128	//透明
+#define TOUMEI_B	128	//透明
+
+w = 512	//bmp width [pixel]
+h = 512 //bmp height[pixel]
+
+mode=0	// 初期化する画面モード
+sx=0	// ウィンドウの配置X（1ドット単位）
+sy=0	// ウィンドウの配置Y（1ドット単位）
+screen 0,1200,512+96,mode,sx,sy
+
+size=128
+buffer 2,size,size,mode	//copy/paste buffer
+gsel 0
+
+title "Sprite editor"
+
+gx=512+16	//work area
+gy=56
+
+fx=0	//source
+fy=0
+fxbak=-1
+fybak=-1
+
+color 255,0,0
+for i,0,512,16
+	line 512,i,512+7,i
+next
+
+sizew = 16		//worksize
+sizeh = 16
+gosub *putworksize
+
+zoom = 32		//倍率
+workw = sizew*zoom
+workh = sizeh*zoom
+
+palx = 816
+x1 = palx
+y1 = 0
+y2 = y1+16
+
+c="  0,128,128":x2=x1+15:gosub *c2rgb :x1 += 16
+c="  0,  0,255":x2=x1+15:gosub *c2rgb :x1 += 16
+c="  0,255,  0":x2=x1+15:gosub *c2rgb :x1 += 16
+c="255,255,  0":x2=x1+15:gosub *c2rgb :x1 += 16
+c="255,  0,  0":x2=x1+15:gosub *c2rgb :x1 += 16
+c="  0,255,255":x2=x1+15:gosub *c2rgb :x1 += 16
+c="255,  0,255":x2=x1+15:gosub *c2rgb :x1 += 16
+c="255,255,255":x2=x1+15:gosub *c2rgb :x1 += 16
+c=" 32, 32, 32":x2=x1+15:gosub *c2rgb :x1 += 16
+c="  0,  0,128":x2=x1+15:gosub *c2rgb :x1 += 16
+c="  0,128,  0":x2=x1+15:gosub *c2rgb :x1 += 16
+c="128,128,  0":x2=x1+15:gosub *c2rgb :x1 += 16
+c="128,  0,  0":x2=x1+15:gosub *c2rgb :x1 += 16
+c="  0,120,120":x2=x1+15:gosub *c2rgb :x1 += 16
+c="128,  0,128":x2=x1+15:gosub *c2rgb :x1 += 16
+c="128,128,128":x2=x1+15:gosub *c2rgb :x1 += 16
+
+x1=palx
+y1=y1+16
+for i,0,16
+	color i*16,i*16,i*16
+	boxf x1,y1,x1+15,y1+8
+	x1 += 16
+next
+
+y1=y1+8
+for i,0,255
+	color i,0,0:line palx+i,y1+ 0,palx+i,y1+ 0+8	
+	color 0,i,0:line palx+i,y1+ 8,palx+i,y1+ 8+8	
+	color 0,0,i:line palx+i,y1+16,palx+i,y1+16+8	
+next
+
+colx = gx+16
+coly = 0
+colr = 255
+colg = 255
+colb = 255
+gosub *colorbar
+
+x1=gx:y1=gy:x2=x1+(sizew*zoom):y2=y1+(sizeh*zoom):gosub *box
+color 0,0,0
+boxf fx,fy,fx+w,fy+h
+x1=fx-1:y1=fy-1:x2=fx+w:y2=fy+h:gosub *box
+
+objsize 128,24
+reqw = w
+pos 256+64+32,512+8
+input reqw,64,20,4 
+reqh = h
+pos 256+160+32,512+8
+input reqh,64,20,4 
+pos 320+32,512+8+20+8
+button gosub "Resize Canvas",*resize_canvas
+
+btnx = 1056
+//x=btnx:y=56:pos x,y
+//print "Work Area"
+
+objsize 64,24
+x=btnx +32:y+=56+24:pos x,y
+button gosub "↑",*viewup
+x=btnx:y += 24:pos x,y
+button gosub "←",*viewprev
+x += 64:pos x,y
+button gosub "→",*viewnext
+x=btnx+32:y += 24:pos x,y
+button gosub "↓",*viewdown
+
+x=btnx:y += 36:pos x,y
+button gosub "zoom x+",*sizeminus
+x += 64:pos x,y
+button gosub "zoom x-",*sizeplus
+x=btnx:y += 24:pos x,y
+button gosub "zoom y+",*sizeminus2
+x += 64:pos x,y
+button gosub "zoom y-",*sizeplus2
+
+x=btnx:y += 36:pos x,y
+button gosub "turn",*turn
+x+=64:pos x,y
+button gosub "mirror",*mirror
+x=btnx:y += 24:pos x,y
+
+button gosub "dark",*dark
+x+=64:pos x,y
+button gosub "light",*light
+x=btnx:y += 24:pos x,y
+
+button gosub "←shift",*shift1
+x += 64:pos x,y
+button gosub "shift→",*shift2
+x=btnx:y += 24:pos x,y
+button gosub "↑shift",*shift3
+x += 64:pos x,y
+button gosub "shift↓",*shift4
+x=btnx:y += 24:pos x,y
+button gosub "monotone",*monotone
+x += 64:pos x,y
+button gosub "invert",*invert
+x=btnx:y += 36:pos x,y
+
+button gosub "pen size",*paint
+x=btnx:y += 24:pos x,y
+button gosub "変換元色",*srccol
+x += 64:pos x,y
+button gosub "色変換",*workcolorchange
+
+x=btnx:y += 24:pos x,y
+button gosub "copy",*buffcopy
+x += 64:pos x,y
+button gosub "cut",*buffcut
+x=btnx:y += 24:pos x,y
+button gosub "paste",*buffpaste
+
+x=btnx:y += 24:pos x,y
+button gosub "all clear",*allclr
+x=btnx:y += 24:pos x,y
+button gosub "box",*boxfill
+x += 64:pos x,y
+button gosub "circle",*circl
+x=btnx:y += 36:pos x,y
+
+objsize 128,24
+button gosub "fullcolor bmp save",*filesave
+
+//y += 24:pos x,y
+//button gosub "16color bmp save",*filesave_c16
+
+//y += 24:pos x,y
+//button gosub "chr(fc) save",*filesave_chr
+
+y += 24:pos x,y
+button gosub "convert save",*filesave_csrc
+
+y += 24:pos x,y
+button gosub "load",*fileload
+
+pos 128+32,512+20+16
+button gosub "透明色on/off",*maskonoff
+
+//title "load BMP/PNG"
+//dialog "*",16,"file"
+//if(stat != 1){
+//  	filename = ""
+//}else{
+//	filename = refstr
+//	pos fx,fy
+//	picload filename,1
+//}
+color 0,0,0
+boxf 256+32,512+8,512,512+32
+color 255,255,255
+pos 256+32,512+8
+print "Canvas "
+//objsize 64,20
+
+
+gosub *fileload
+
+paintflag=0	//ブラシ
+
+while 1
+	wait 10	
+	x = mousex : y = mousey
+	getkey k,1
+	if (k):gosub *click1  //マウスの左ボタン
+	getkey k,2
+	if (k):gosub *click2  //マウスの右ボタン
+wend
+//-------
+*fileload
+gosub *loadgraphic
+if filename=="":return
+ptr = strlen(filename)
+repeat
+	if(ptr<=0):break
+	if(peek(filename,ptr-1)==$5C):break
+	ptr--
+loop
+title "SPEDIT :"+strmid(filename,ptr,255)
+
+r=0:g=0:b=0
+r2=TOUMEI_R:g2=TOUMEI_G:b2=TOUMEI_B:gosub *colorchange	// 黒色 --> 透明
+toumei = 1
+gosub *draw
+return
+
+//-------
+*maskonoff
+if(toumei == 1){
+	r=TOUMEI_R:g=TOUMEI_G:b=TOUMEI_B
+	r2=0:g2=0:b2=0	// 透明->黒色 
+	toumei = 0
+}else{
+	r=0:g=0:b=0
+	r2=TOUMEI_R:g2=TOUMEI_G:b2=TOUMEI_B	// 黒色 --> 透明
+	toumei = 1
+}
+gosub *colorchange
+gosub *draw
+return
+
+//-------
+*colorbar
+color 0,0,0:boxf colx,coly,colx+256,coly+16*3
+color 255,0,0:boxf colx,coly+0 ,colx+colr,coly+12
+color 0,255,0:boxf colx,coly+16,colx+colg,coly+12+16
+color 0,0,255:boxf colx,coly+32,colx+colb,coly+12+32
+
+color 255,255,255
+pos colx+228,0 :print colr
+pos colx+228,16:print colg
+pos colx+228,32:print colb
+
+color 0,0,0
+boxf colx-17,coly,colx-1,coly+47
+
+color colr,colg,colb
+boxf colx-16,coly+1,colx-2,coly+46
+return
+
+//----------
+*click1
+if (y<48){
+	if (x>=palx)and(x<(palx+256)){
+		pget x,y
+		colr = ginfo(16)
+		colg = ginfo(17)
+		colb = ginfo(18)
+		gosub *colorbar
+		return
+	}
+	if (x>=colx)and(x<(colx+256)){
+		x-=colx
+		if(y<16){
+			colr = x
+		}else{
+			if(y<32){
+				colg = x
+			}else{
+				colb = x
+			}
+		}
+		gosub *colorbar
+		return
+	}
+}	
+	
+if (x<w)and(y<h) {
+	grid = 8
+	fx=int(x/grid)*grid
+	fy=int(y/grid)*grid
+	gosub *draw
+	return
+}
+workw = zoom*sizew
+workh = zoom*sizeh
+if (x<gx)or(y<gy)or(x>=(gx+workw))or(y>=(gy+workh)):return
+
+x =int((x-gx)/zoom)
+y =int((y-gy)/zoom)
+
+color colr,colg,colb
+pset fx+x,fy+y
+x1 = gx+(zoom*x)
+y1 = gy+(zoom*y)
+boxf x1,y1,x1+zoom-1,y1+zoom-1
+
+if (paintflag > 0) {
+	circle fx+x-paintflag,fy+y-paintflag,fx+x+paintflag,fy+y+paintflag,1
+	gosub *draw
+}
+return
+
+//----------
+*click2
+pget x,y
+colr = ginfo(16)
+colg = ginfo(17)
+colb = ginfo(18)
+gosub *colorbar
+return
+//----------
+*loadgraphic
+screen 1,1200,640,mode	//window1作成
+gsel 1
+title "load graphic"
+dialog "*",16,"file"
+if(stat != 1){
+  	filename = ""	//cancel
+  	gsel 1,-1	//window1非表示
+	gsel 0
+	return
+}else{
+	filename = refstr
+	if((instr(filename,0,".chr")>0)or(instr(filename,0,".bin")>0)){
+		gosub *loadchrfile
+	}else{
+		if(instr(filename,0,".nes")>0)or((instr(filename,0,".NES")>0)){
+			gosub *loadnesfile
+		}else{
+			picload filename
+			w=ginfo(12)	//クライアント領域Xサイズ
+			h=ginfo(13) //クライアント領域Yサイズ
+		}
+	}
+}
+gosub *gcopy_1_to_0
+objprm 0,w
+objprm 1,h
+
+return
+//----
+*resize_canvas
+dialog "(Resize)Are you sure?",2
+if (stat!=6){	
+	return
+}
+screen 1,reqw,reqh,mode	//window1を作成
+color TOUMEI_R,TOUMEI_G,TOUMEI_B
+boxf 0,0,reqw-1,reqh-1
+
+gsel 1
+pos 0,0
+x1=0:y1=0
+gcopy 0,x1,y1,w,h
+//r=TOUMEI_R:g=TOUMEI_G:b=TOUMEI_B
+//r2=0:g2=0:b2=0:gosub *colorchange	// 青緑->黒色 
+w = reqw
+h = reqh
+gsel 0
+gosub *gcopy_1_to_0
+gosub *close_window1
+return
+//----
+*loadchrfile
+sdim fbuf,8192
+title "load chr(famicom chr) file"
+bload filename,fbuf
+ptr=0
+datasize=8192/16	// 総タイル数
+cellcnt=16
+//----
+*loadchrsub
+dim gbuf,8,8
+//if((datasize/cellcnt)>64):datasize=cellcnt*64
+//datasize タイル数
+for chnum,0,datasize
+	for y,0,8
+		for x,0,8
+			gbuf(x,y) = 0
+		next
+	next
+	x1 = (chnum \ cellcnt)*8
+	y1 = int(chnum / cellcnt)*8
+	for depth,0,2	
+		for y,0,8
+			bitdata = peek(fbuf,ptr)
+			ptr++
+			for x,0,8
+				idx = x+(y*8)
+				c = (bitdata >> (7-x)) and 1
+				gbuf(x,y) += (c<<depth)
+			next
+		next
+	next
+	redraw 0
+	for y,0,8
+		for x,0,8
+			idx = x+(y*8)
+			c = gbuf(x,y) *256/4
+			if(c):c += (256/8)
+			// 0 / 96  / 160 / 224
+			// 0 / 128 / 192 / 255
+			color c,c,c
+			pset x+x1,y+y1
+		next
+	next
+	redraw 1
+next
+w = cellcnt*8
+h = int(datasize/cellcnt)*8
+return
+//----
+// $4E $45 $53 $1A
+*loadnesfile
+sdim fbuf,512*1024+16
+title "load nes(famicom rom image) file"
+bload filename,fbuf	// nesファイル読み込み
+totalsize = strsize	// ファイルサイズ
+ptr = 16384*peek(fbuf,4) // prg size[16384 Byte]
+chrdatasize = 8192*peek(fbuf,5) // chr size[8192 Byte]
+mapper = (peek(fbuf,6) >> 4)+(peek(fbuf,7) & $f0)
+datasize = int(chrdatasize/16)	// 総タイル数
+dialog "Mapper "+str(mapper)+"/ PRG="+str(ptr)+"BYTES / CHR="+str(chrdatasize)+"BYTES"
+if(datasize==0){
+	dialog "キャラデータが存在しません"
+	return
+}
+
+ptr += 16 //ヘッダサイズ追加
+cellcnt = 16
+goto *loadchrsub
+
+//----------window1から0へコピー
+*gcopy_1_to_0
+gsel 0,1	//window0に切り替え
+color 0,0,64
+boxf 0,0,512,512
+pos 0,0
+gcopy 1,0,0,w,h
+gsel 1,-1	//window1非表示
+gsel 0
+return
+
+//----------window0から1へコピー
+*gcopy_0_to_1
+screen 1,w,h,mode	//window1を作成
+gsel 1
+pos 0,0
+x1=0:y1=0
+gcopy 0,x1,y1,w,h
+r=TOUMEI_R:g=TOUMEI_G:b=TOUMEI_B
+r2=0:g2=0:b2=0:gosub *colorchange	// 青緑->黒色 
+return
+//----------
+*filesave
+gosub *gcopy_0_to_1	//window0から1へコピー
+if (filename!=""){
+	dialog "Yes="+filename+"で保存 / No=別名保存",2
+	if(stat==6){	//yes
+		bmpsave filename
+		gosub *close_window1
+		return
+	}
+}
+
+dialog "bmp",17,"BMPで保存"
+if(refstr != ""){
+	filename = refstr
+	bmpsave filename
+}
+gosub *close_window1
+return
+
+//----色変換
+*colorchange
+for y,0,h
+//	title "proccess "+str(y)+"/"+str(h-1)
+	redraw 0
+	for x,0,w
+		pget x,y
+		nr=ginfo(16)
+		ng=ginfo(17)
+		nb=ginfo(18)
+		if(r==nr)and(g==ng)and(b==nb){
+			nr=r2
+			ng=g2
+			nb=b2
+		}
+		if (nr>0)and(nr<8):	nr=8
+		if (ng>0)and(ng<8): ng=8
+		if (nb>0)and(nb<8): nb=8
+ 
+		color nr,ng,nb
+		pset x,y
+	next
+	redraw 1
+next
+return
+
+//----
+*draw
+if (fx>(w-sizew)): fx=w-sizew
+if (fy>(h-sizeh)): fy=h-sizeh
+redraw 0
+if((fx!=fxbak)or(fy!=fybak)){
+	fxbak=fx
+	fybak=fy
+	color 0,0,0
+	boxf 0,520,128,520+24
+	color 255,255,255
+	pos 16,520
+	print "x="+str(fx)+" , y="+str(fy)
+	
+	if(fy<128){
+		dsize=16
+		dofs=0
+	}
+	if(fy>=128)and(fy<(128*2)){
+		dsize=32
+		dofs=65536/(16*16)
+	}
+	if(fy>=(128*2))and(fy<(128*3)){
+		dsize=64
+		dofs=(65536/(16*16))+(65536/(32*32))
+	}
+	if(fy>=(128*3)){
+		dsize=128
+		dofs=(65536/(16*16))+(65536/(32*32))+(65536/(64*64))
+	}
+//	dnum=int(fx/dsize)+(int((fy \ 128)/dsize)*(512/dsize))+dofs
+//	title "SPEDIT def num="+str(dnum)
+}
+
+color 0,0,64
+boxf gx,gy,gx+511,gy+511
+for y,0,sizeh
+	for x,0,sizew
+		pget fx+x,fy+y
+		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		x1= gx + (x * zoom)
+		y1= gy + (y * zoom)
+		color r,g,b
+		boxf x1,y1,x1+zoom-1,y1+zoom-1
+	next
+next
+
+color 255,0,0
+for i,0,sizew,8
+	x1= gx + (i * zoom)
+	line x1,gy,x1,gy+(sizeh*zoom)
+next
+
+for i,0,sizeh,8
+	y1= gy + (i * zoom)
+	line gx,y1,gx+(sizew*zoom),y1
+next
+
+redraw 1
+return
+
+//----
+*box
+color 255,0,0
+line x1,y1,x1,y2
+line x2,y1,x2,y2
+line x1,y1,x2,y1
+line x1,y2,x2,y2
+return
+
+//---
+*c2rgb
+	idx  =instr(c,0,",")
+	idx2 =instr(c,idx+1,",")
+	r =int(strmid(c,0,idx))
+	g =int(strmid(c,idx+1,idx2+idx+1))
+	b =int(strmid(c,idx+1+idx2+1,3))
+	color r,g,b
+	boxf x1,y1,x2,y2
+return
+
+//-----------
+*sizeplus
+//sizew *= 2
+sizew += 8
+if(sizew>128):sizew=128
+gosub *putworksize
+gosub *draw
+return
+//-----------
+*sizeminus
+//sizew /= 2
+sizew -= 8
+if(sizew<8):sizew=8
+gosub *putworksize
+gosub *draw
+return
+
+//-----------
+*sizeplus2
+//sizeh *= 2
+sizeh += 8
+if(sizeh>128):sizeh=128
+gosub *putworksize
+gosub *draw
+return
+//-----------
+*sizeminus2
+//sizeh /= 2
+sizeh -= 8
+if(sizeh<8):sizeh=8
+gosub *putworksize
+gosub *draw
+return
+
+//----
+*putworksize
+if(sizew>sizeh){
+	zoom=512/sizew
+}else{
+	zoom=512/sizeh
+}
+color 0,0,0
+boxf 1056,56,1056+128,56+22
+color 255,255,255
+pos 1056,56
+print "WORKSIZE "+str(sizew)+"x"+str(sizeh)
+return
+
+//----------
+*allclr
+redraw 0
+color colr,colg,colb
+boxf fx,fy,fx+sizew-1,fy+sizeh-1
+redraw 1
+gosub *draw
+return
+
+//----------
+*boxfill
+redraw 0
+
+color 32,32,32
+boxf fx,fy,fx+sizew-1,fy+sizeh-1
+
+color colr,colg,colb
+boxf fx+1,fy+1,fx+sizew-2,fy+sizeh-2
+
+redraw 1
+gosub *draw
+return
+
+//----------
+*circl
+redraw 0
+color 0,128,128
+boxf fx,fy,fx+sizew-1,fy+sizeh-1
+color colr,colg,colb
+circle fx,fy,fx+sizew,fy+sizeh,1
+redraw 1
+gosub *draw
+return
+
+//------------
+*buffcopy
+gsel 2
+pos 0,0
+gcopy 0,fx,fy,sizew,sizeh
+gsel 0
+return
+
+//------------
+*buffcut
+gsel 2
+pos 0,0
+gcopy 0,fx,fy,sizew,sizeh
+gsel 0
+color 0,128,128
+boxf fx,fy,fx+sizew-1,fy+sizeh-1
+gosub *draw
+return
+
+//----------
+*buffpaste
+gsel 0
+pos fx,fy
+gcopy 2,0,0,sizew,sizeh
+gosub *draw
+return
+
+//----------
+*viewprev
+fx -= sizew
+if(fx<0){
+	fx=w-sizew
+	fy-=sizeh
+	if(fy<0):fy=h-sizeh
+}
+gosub *draw
+return
+//----------
+*viewnext
+fx += sizew
+if((fx+sizew)>w){
+	fx=0
+	fy+=sizeh
+	if((fy+sizeh)>h):fy=0
+}
+gosub *draw
+return
+	
+//----------
+*viewup
+fy-=sizeh
+if(fy<0):fy=h-sizeh
+gosub *draw
+return
+
+//--------
+*viewdown
+fy+=sizeh
+if((fy+sizeh)>h):fy=0
+gosub *draw
+return
+
+//----
+*turn
+redraw 0
+for y,0,sizeh
+	for x,0,sizew
+		gsel 0
+		pget fx+x,fy+y
+		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		gsel 2
+		color r,g,b
+		pset (sizew-1)-y,x
+	next
+next
+gsel 0
+pos fx,fy
+gcopy 2,0,0,sizew,sizeh
+gosub *draw
+return
+
+//----
+*mirror
+redraw 0
+for y,0,sizeh
+	for x,0,sizew
+		gsel 0
+		pget fx+x,fy+y
+		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		gsel 2
+		color r,g,b
+		pset (sizew-1)-x,y
+	next
+next
+gsel 0
+pos fx,fy
+gcopy 2,0,0,sizew,sizeh
+gosub *draw
+return
+
+//----
+*dark
+redraw 0
+gsel 0
+for y,0,sizeh
+	for x,0,sizew
+		pget fx+x,fy+y
+		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		if(r==0)and(g==128)and(b==128){
+		}else{
+			r-=8
+			g-=8
+			b-=8
+			if(r<8):r=8
+			if(g<8):g=8
+			if(b<8):b=8
+			color r,g,b
+			pset fx+x,fy+y
+		}
+	next
+next
+gosub *draw
+return
+
+//----
+*light
+redraw 0
+gsel 0
+for y,0,sizeh
+	for x,0,sizew
+		pget fx+x,fy+y
+		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		if(r==0)and(g==128)and(b==128){
+		}else{
+			r+=8
+			g+=8
+			b+=8
+			if(r>255):r=255
+			if(g>255):g=255
+			if(b>255):b=255
+			color r,g,b
+			pset fx+x,fy+y
+		}
+	next
+next
+gosub *draw
+return
+
+//--------ブラシ
+*paint
+paintflag = (paintflag+1) and 3
+title str(paintflag)
+return
+
+//----
+*shift1
+gosub *buffclr
+pos 0,0
+gcopy 0,fx+1,fy,sizew-1,sizeh
+gosub *buffpaste
+return
+
+//----
+*shift2
+gosub *buffclr
+pos 1,0
+gcopy 0,fx,fy,sizew-1,sizeh
+gosub *buffpaste
+return
+
+//----
+*shift3
+gosub *buffclr
+pos 0,0
+gcopy 0,fx,fy+1,sizew,sizeh-1
+gsel 0
+gosub *buffpaste
+return
+
+//----
+*shift4
+gosub *buffclr
+pos 0,1
+gcopy 0,fx,fy,sizew,sizeh-1
+gosub *buffpaste
+return
+
+//--------
+*buffclr
+redraw 0
+gsel 2
+color 0,128,128
+boxf 0,0,sizew-1,sizeh-1
+return
+
+//----
+*monotone
+redraw 0
+for y,0,sizeh
+	for x,0,sizew
+		pget fx+x,fy+y
+		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		if((r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
+			// 透明
+		}else{
+			tmp = (r+g+b)/3
+			color tmp,tmp,tmp
+			pset fx+x,fy+y
+		}
+	next
+next
+gosub *draw
+return
+//----
+*invert
+redraw 0
+for y,0,sizeh
+	for x,0,sizew
+		pget fx+x,fy+y
+		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		if((r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
+			// 透明
+		}else{
+			r = 255-r
+			g = 255-g
+			b = 255-b
+			color r,g,b
+			pset fx+x,fy+y
+		}
+	next
+next
+gosub *draw
+return
+
+//----
+
+*srccol
+srcr=colr
+srcg=colg
+srcb=colb
+color 0,0,0
+pos 1150,0
+print "SOURCE"
+color 0,0,0
+boxf 1150,16,1150+47,16+16
+color colr,colg,colb
+boxf 1151,17,1150+46,16+15
+return
+
+//----
+*workcolorchange
+redraw 0
+for y,0,sizeh
+//	title "proccess "+str(y)+"/"+str(h-1)
+	for x,0,sizew
+		pget fx+x,fy+y
+		if (srcr==ginfo(16))and(srcg==ginfo(17))and(srcb==ginfo(18)){
+			color colr,colg,colb
+			pset fx+x,fy+y
+		}
+	next
+next
+gosub *draw
+return
+
+//---------16色パレット抽出
+*getpalette
+dim pal,16
+for i,0,16
+	pal(i)=0
+next
+cmax = 1	//色数
+for x,0,w
+	for y,0,h
+		pget x,y
+		r = ginfo(16)
+		g = ginfo(17)
+		b = ginfo(18)
+		c = (r << 16)+(g << 8)+(b << 0)
+		// パレット検索
+		for i,0,16
+			if(pal(i)==c):_break
+		next
+		if(i>=16){	// 色を登録
+			if(cmax<16){
+				pal(cmax) = c
+				cmax++	//色数
+			}else{
+				cmax=17
+			}
+		}
+	next
+next
+return
+
+//----------固定16色パレット
+*getpalette2
+dim pal,16
+pal(0)= 0x000000 //0:black      
+pal(1)= 0x800000 //1:red        
+pal(2)= 0x008000 //2:green      
+pal(3)= 0x808000 //3:yellow     
+pal(4)= 0x000080 //4:blue       
+pal(5)= 0x800080 //5:magenta    
+pal(6)= 0x008080 //6:cyan       
+pal(7)= 0x808080 //7:dark gray  
+pal(8)= 0xC0C0C0 //8:light gray 
+pal(9)= 0xff0000 //9:red        
+pal(10)= 0x00ff00 //10:green     
+pal(11)= 0xffff00 //11:yellow    
+pal(12)= 0x0000ff //12:blue      
+pal(13)= 0xff00ff //13:magenta   
+pal(14)= 0x00ffff //14:cyan      
+pal(15)= 0xffffff //15:white     
+cmax=16
+return
+
+//----------
+*filesave_csrc
+screen 1,480,400
+objsize 300,24
+tilestart=256
+tilepal=0
+tilesame=0	//同一パターン検出機能(0=disable)
+x=0:y=0
+pos x,y
+button gosub "BMPで保存 固定パレット16色に変換",*filesave_c16
+y+=25
+pos x,y
+button gosub "headerで保存 2bit=4色(Gameboy)",*csrc_gameboy
+y+=25
+pos x,y
+button gosub "headerで保存 2bit=4色(Famicom)",*csrc4color
+y+=25
+pos x,y
+button gosub "binaryで保存 2bit=4色(Famicom)",*filesave_fcchr
+y+=25
+pos x,y
+button gosub "binaryで保存 4bit=16色(super famicom)",*c16color_sfami
+y+=25
+pos x,y
+button gosub "headerで保存 1bit=2色",*csrc2color
+y+=25
+pos x,y
+button gosub "cで保存 4bit=16色(PCEngine Sprite)",*c16color_pce
+y+=25
+pos x,y
+button gosub "binaryで保存 4bit=16色(PC Engine Sprite)",*c16color_pce_sp
+
+y+=25
+pos x+16,y
+print "開始タイル番号(256-)"
+pos x+200,y
+input tilestart,100,20,4
+y+=25
+pos x+16,y
+print "パレット番号(0-15)"
+pos x+200,y
+input tilepal,100,20,4
+y+=25
+pos x+16,y
+chkbox "類似パターンのVRAM節約",tilesame
+y+=25
+pos x,y
+button gosub "binaryで保存 4bit=16色(PC Engine BG)",*c16color_pce_bg
+
+y+=25
+pos x,y
+button gosub "binaryで保存 4bit=16色TESTパターン(PC Engine BG)",*c16color_pce_bgtest
+y+=25
+pos x,y
+button gosub "binaryで保存 4bit=16色(PC Engine MAPCHIP)",*c16color_pce_tile
+
+y+=25
+pos x,y
+button gosub "cancel",*cancel
+title "convert menu"
+return
+//-----
+*cancel
+gosub *close_window1
+return
+//-----
+*close_window1
+gsel 1,-1 //window1を非表示
+gsel 0,1 //window0をアクティブ
+return
+
+//---------super famicom
+*c16color_sfami
+gosub *gcopy_0_to_1	//window0から1へコピー
+gosub *getpalette	//パレットの取得
+if(cmax>=17){
+	dialog "fatal error:色数が16色を超えてます"
+	return
+}
+
+dim gbuf,8,8
+
+// 8*8pixel * 4bitcolor / 8 = 32 Bytes(16 Word)
+//32*28cell * 32Byte = 28672 Byte(14336 Word)
+
+chmax = int(w*h/(8*8))	//tile count
+cellcnt = int(w/8)	// tile width
+sdim fbuf,32*chmax // file buffer(pattern)
+sdim tmppat,32 // temp buffer(8x8pixel x 1pattern)
+patternsize = 0
+
+fp = 0
+for chnum,0,chmax
+	// 8x8pixelを切り抜いてgbufに格納
+	x1 = (chnum \ cellcnt)*8
+	y1 = int(chnum / cellcnt)*8
+	for y,0,8
+		for x,0,8
+			pget x+x1,y+y1
+			r = ginfo(16)
+			g = ginfo(17)
+			b = ginfo(18)
+			c = (r << 16)+(g << 8)+(b << 0)
+			for i,0,16
+				if(pal(i)==c){
+					gbuf(x,y) = i
+					_break
+				}
+			next
+		next
+	next
+	i=0
+	for depth,0,4,2	//4プレーンに分解、tmppatに格納
+		for y,0,8
+			tmp = 0
+			for x,0,8
+				if((1 << (depth+0)) and gbuf(x,y)){
+					tmp += (0x80 >> x)
+				}
+				if((1 << (depth+1)) and gbuf(x,y)){
+					tmp += (0x8000 >> x)
+				}
+			next
+			poke tmppat,i,(tmp & 255)	//下位
+			i++
+			poke tmppat,i,(tmp>>8)	//上位
+			i++		
+		next
+	next
+
+	//新規パターン追加
+	for i,0,32
+		poke fbuf,patternsize,peek(tmppat,i)
+		patternsize++
+	next
+next
+
+tmpstr=""
+tmpstr+="Pattern="+str(patternsize)+" Bytes"
+tmpstr+="Colors="+str(cmax)
+dialog tmpstr
+
+ptr = strlen(filename)-1
+repeat
+	if (ptr<=0){
+		ptr=0
+		break
+	}
+	if (peek(filename,ptr)==$5C):	break	//yen
+	if (peek(filename,ptr)==$2E):	break	//.
+	ptr--
+loop
+
+fname = strmid(filename,0,ptr)+"_pattern.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,patternsize
+}
+
+sdim fbuf,2*16*16
+fp = 0
+for i,0,16
+	c = pal(i)
+	r = (c >> 16) & 255
+	g = (c >> 8) & 255
+	b = (c >> 0) & 255
+	r = int(r/((1<<8)/(1<<5)))	//8+8+8bit→5+5+5bit に変換
+	g = int(g/((1<<8)/(1<<5))) 
+	b = int(b/((1<<8)/(1<<5))) 
+	c =	(b << 10)+(g << 5)+(r << 0)
+	poke fbuf,fp,(c & 255)	//下位
+	fp++
+	poke fbuf,fp,(c >> 8)	//上位
+	fp++
+next
+fname = strmid(filename,0,ptr)+"_palette.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+
+gosub *close_window1
+return
+
+//---------pc engine sprite
+*c16color_pce_sp
+gosub *gcopy_0_to_1	//window0から1へコピー
+gosub *getpalette
+if(cmax>=17){
+	dialog "fatal error:色数が16色を超えてます"
+	return
+}
+
+dim gbuf,16,16
+
+chmax = int(w*h/(16*16))
+cellcnt = int(w/16)
+// 16*16pixel * 4bitcolor / 8 = 128 Bytes
+sdim fbuf,128*chmax // filesize
+
+fp = 0
+for chnum,0,chmax
+	x1 = (chnum \ cellcnt)*16
+	y1 = int(chnum / cellcnt)*16
+	for y,0,16
+		for x,0,16
+			pget x+x1,y+y1
+			r = ginfo(16)
+			g = ginfo(17)
+			b = ginfo(18)
+			c = (r << 16)+(g << 8)+(b << 0)
+			// パレット検索
+			for i,0,16
+				if(pal(i)==c){
+					gbuf(x,y) = i
+					_break
+				}
+			next
+		next
+	next
+	for depth,0,4	//4プレーンに分解
+		for y,0,16
+			tmp = 0
+			for x,0,16
+				if((1 << depth) and gbuf(x,y)){
+					tmp += (0x8000 >> x)
+				}
+			next
+			poke fbuf,fp,(tmp & 255)	//下位
+			fp++
+			poke fbuf,fp,(tmp >> 8)		//上位
+			fp++
+		next
+	next
+next
+
+fname="sp_pattern.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+
+sdim fbuf,2*16
+fp = 0
+for i,0,16
+	c = pal(i)
+	r = (c >> 16) & 255
+	g = (c >> 8) & 255
+	b = (c >> 0) & 255
+	r = int(r/(256/8))	//8+8+8bit→3+3+3bit に変換
+	g = int(g/(256/8)) 
+	b = int(b/(256/8)) 
+	c = (g << 6)+(r << 3)+(b << 0)
+	poke fbuf,fp,(c & 255)	//下位
+	fp++
+	poke fbuf,fp,(c >> 8)	//上位
+	fp++
+next
+fname="sp_palette.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+gosub *close_window1
+return
+
+//---------pc engine TILE
+*c16color_pce_tile
+gosub *gcopy_0_to_1	//window0から1へコピー
+gosub *getpalette
+if(cmax>=17){
+	dialog "fatal error:色数が16色を超えてます"
+	return
+}else{
+	dialog "使用色数="+str(cmax)
+}
+
+dim gbuf,8,8
+
+// 8*8pixel * 4bitcolor / 8 = 32 Bytes
+//32*28cell * 32Byte = 28672 Byte(14336 Word)
+
+chmax = int(w*h/(8*8))
+cellcnt = int(w/8)
+sdim fbuf,32*chmax // filesize
+
+fp = 0
+for chnum,0,chmax
+	x1 = ((int(chnum/4)*2) \ cellcnt)*8
+	y1 = int(chnum / (cellcnt*4))*8*2
+	if((chnum \ 4)==1):	x1+=8
+	if((chnum \ 4)==2): y1+=8
+	if((chnum \ 4)==3){
+		x1+=8
+		y1+=8
+	}
+
+	for y,0,8
+		for x,0,8
+			pget x+x1,y+y1
+			r = ginfo(16)
+			g = ginfo(17)
+			b = ginfo(18)
+			c = (r << 16)+(g << 8)+(b << 0)
+			for i,0,16
+				if(pal(i)==c){
+					gbuf(x,y) = i
+					_break
+				}
+			next
+		next
+	next
+	for depth,0,4,2	//4プレーンに分解
+		for y,0,8
+			tmp = 0
+			for x,0,8
+				if((1 << (depth+0)) and gbuf(x,y)){
+					tmp += (0x80 >> x)
+				}
+				if((1 << (depth+1)) and gbuf(x,y)){
+					tmp += (0x8000 >> x)
+				}
+			next
+			poke fbuf,fp,(tmp & 255)	//下位
+			fp++
+			poke fbuf,fp,(tmp>>8)	//上位
+			fp++		
+		next
+	next
+next
+
+fname="map_pattern.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+
+sdim fbuf,2*16*16
+fp = 0
+for i,0,16
+	c = pal(i)
+	r = (c >> 16) & 255
+	g = (c >> 8) & 255
+	b = (c >> 0) & 255
+	r = int(r/(256/8))	//8+8+8bit→3+3+3bit に変換
+	g = int(g/(256/8)) 
+	b = int(b/(256/8)) 
+	c =	(g << 6)+(r << 3)+(b << 0)
+	poke fbuf,fp,(c & 255)	//下位
+	fp++
+	poke fbuf,fp,(c >> 8)	//上位
+	fp++
+next
+fname="map_palette.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+
+gosub *close_window1
+return
+
+//---------pc engine BG
+*c16color_pce_bg
+gosub *gcopy_0_to_1	//window0から1へコピー
+gosub *getpalette	//パレットの取得
+if(cmax>=17){
+	dialog "fatal error:色数が16色を超えてます"
+	return
+}
+
+dim gbuf,8,8
+
+// 8*8pixel * 4bitcolor / 8 = 32 Bytes(16 Word)
+//32*28cell * 32Byte = 28672 Byte(14336 Word)
+
+chmax = int(w*h/(8*8))	//tile count
+cellcnt = int(w/8)	// tile width
+sdim fbuf,32*chmax // file buffer(pattern)
+sdim tmppat,32 // temp buffer(8x8pixel x 1pattern)
+sdim fbuf2,chmax*2 // buffer(BAT)
+batsize = 0
+patternsize = 0
+
+fp = 0
+for chnum,0,chmax
+	// 8x8pixelを切り抜いてgbufに格納
+	x1 = (chnum \ cellcnt)*8
+	y1 = int(chnum / cellcnt)*8
+	for y,0,8
+		for x,0,8
+			pget x+x1,y+y1
+			r = ginfo(16)
+			g = ginfo(17)
+			b = ginfo(18)
+			c = (r << 16)+(g << 8)+(b << 0)
+			for i,0,16
+				if(pal(i)==c){
+					gbuf(x,y) = i
+					_break
+				}
+			next
+		next
+	next
+	i=0
+	for depth,0,4,2	//4プレーンに分解、tmppatに格納
+		for y,0,8
+			tmp = 0
+			for x,0,8
+				if((1 << (depth+0)) and gbuf(x,y)){
+					tmp += (0x80 >> x)
+				}
+				if((1 << (depth+1)) and gbuf(x,y)){
+					tmp += (0x8000 >> x)
+				}
+			next
+			poke tmppat,i,(tmp & 255)	//下位
+			i++
+			poke tmppat,i,(tmp>>8)	//上位
+			i++		
+		next
+	next
+
+	skip = 0
+	if(tilesame!=0){	//登録済みパターンとの照合
+		for chcode,0,int(patternsize/32)
+			for i,0,32
+				if(peek(fbuf,(chcode*32)+i) != peek(tmppat,i)){
+					_break
+				}
+			next
+			if(i == 32){	//同一のパターンを発見
+				color 255,0,0
+				boxf x1,y1,x1+7,y1+7
+				skip = 1
+				_break	//chcodeにタイル番号
+			}
+		next
+	}else{	//重複の照合をしない
+		chcode=int(patternsize/32)	//タイル番号
+	}
+	if(skip==0){	//新規パターン追加
+		for i,0,32
+			poke fbuf,patternsize,peek(tmppat,i)
+			patternsize++
+		next
+	}
+	
+	//BAT
+	c = tilestart + chcode + (tilepal << 12)
+	poke fbuf2,batsize,(c & 255)	//下位
+	batsize++
+	poke fbuf2,batsize,(c >> 8)	//上位
+	batsize++
+next
+
+tmpstr=""
+tmpstr+="Pattern="+str(patternsize/2)+" Word"
+tmpstr+="("+str(((32*chmax)-patternsize)/2)+" Word節約) ,"
+tmpstr+="Color="+str(cmax)+" ,"
+tmpstr+="BAT="+str(batsize)+" Byte"
+dialog tmpstr
+
+fname="bg_pattern.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,patternsize
+}
+
+sdim fbuf,2*16*16
+fp = 0
+for i,0,16
+	c = pal(i)
+	r = (c >> 16) & 255
+	g = (c >> 8) & 255
+	b = (c >> 0) & 255
+	r = int(r/(256/8))	//8+8+8bit→3+3+3bit に変換
+	g = int(g/(256/8)) 
+	b = int(b/(256/8)) 
+	c =	(g << 6)+(r << 3)+(b << 0)
+	poke fbuf,fp,(c & 255)	//下位
+	fp++
+	poke fbuf,fp,(c >> 8)	//上位
+	fp++
+next
+fname="bg_palette.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+
+fname="bg_bat.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf2,batsize
+}
+
+gosub *close_window1
+return
+//---------pc engine BG(240色 TEST pattern)
+*c16color_pce_bgtest
+dim gbuf,8,8
+
+w=256
+h=224
+chmax = 16
+cellcnt = int(w/8)
+// 8*8pixel * 4bitcolor / 8 = 32 Bytes
+sdim fbuf,32*chmax // filesize
+
+fp = 0
+for chnum,0,chmax
+	x1 = (chnum \ cellcnt)*8
+	y1 = int(chnum / cellcnt)*8
+	for y,0,8
+		for x,0,8
+			c = chnum \ 16
+			gbuf(x,y) = c
+		next
+	next
+	for depth,0,4,2	//4プレーンに分解
+		for y,0,8
+			tmp = 0
+			for x,0,8
+				if((1 << (depth+0)) and gbuf(x,y)){
+					tmp += (0x80 >> x)
+				}
+				if((1 << (depth+1)) and gbuf(x,y)){
+					tmp += (0x8000 >> x)
+				}
+			next
+			poke fbuf,fp,(tmp & 255)	//下位
+			fp++
+			poke fbuf,fp,(tmp>>8)	//上位
+			fp++		
+		next
+	next
+next
+
+fname="bg_pattern.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+
+sdim fbuf,2*16*16
+fp = 0
+for i,0,256
+	g = (int(i/16)\ 8)*255/7
+	r = (i \ 8)*255/7
+	b = int(i/64)*255/3
+	r = int(r/(256/8))	//8bit→3bit に変換
+	g = int(g/(256/8)) 
+	b = int(b/(256/8)) 
+	c =	(g << 6)+(r << 3)+(b << 0)
+	poke fbuf,fp,(c & 255)	//下位
+	fp++
+	poke fbuf,fp,(c >> 8)	//上位
+	fp++
+next
+fname="bg_palette.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+
+sdim fbuf,32*28*2
+fp=0
+for i,0,32*28
+	x = i \ 32
+	y = int(i/32)
+	c = 0x100+(i \ 16)+((y \ 16)*0x1000)	
+	poke fbuf,fp,(c & 255)	//下位
+	fp++
+	poke fbuf,fp,(c >> 8)	//上位
+	fp++
+next
+fname="bg_bat.bin"
+dialog fname+"で保存",2
+if (stat==6){	//はい
+	bsave fname,fbuf,fp
+}
+
+gosub *close_window1
+return
+
+//---------pc engine
+*c16color_pce
+gosub *gcopy_0_to_1	//window0から1へコピー
+gosub *getpalette
+if(cmax>=17){
+	dialog "fatal error:色数が16色を超えてます"
+	return
+}
+fbuf = ""
+//fbuf += "const char pattern[] = {\n"
+fbuf += "const int pattern[] = {\n"
+dim gbuf,16,16
+
+chmax = int(w*h/(16*16))
+cellcnt = int(w/16)
+flag = 0
+for chnum,0,chmax
+	x1 = (chnum \ cellcnt)*16
+	y1 = int(chnum / cellcnt)*16
+	for y,0,16
+		for x,0,16
+			pget x+x1,y+y1
+			r = ginfo(16)
+			g = ginfo(17)
+			b = ginfo(18)
+			c = (r << 16)+(g << 8)+(b << 0)
+			// パレット検索
+			for i,0,16
+				if(pal(i)==c){
+					gbuf(x,y) = i
+					_break
+				}
+			next
+		next
+	next
+	fbuf += "/*chara"+str(chnum)+"*/\n"
+	for depth,0,4	//4プレーンに分解
+		for y,0,16
+			tmp = 0
+			for x,0,16
+				if((1 << depth) and gbuf(x,y)){
+					tmp += (0x8000 >> x)
+				}
+			next
+			if(flag==0){
+				flag=1
+			}else{
+				fbuf += ","
+			}
+			fbuf += "0x"+strf("%04X",tmp)
+//			fbuf += "0x"+strf("%02X",tmp >> 8)
+//			fbuf += ","
+//			fbuf += "0x"+strf("%02X",tmp & 255)
+		next
+	next
+	fbuf += "\n\n"
+next
+fbuf += "};\n"
+fbuf += "\n"
+//パレット
+flag = 0
+fbuf += "const char palette[] = {\n"
+for i,0,16
+	if(flag==0){
+		flag=1
+	}else{
+		fbuf += ","
+	}
+	c = pal(i)
+	r = (c >> 16) & 255
+	g = (c >> 8) & 255
+	b = (c >> 0) & 255
+	r = int(r/(256/8)) 
+	g = int(g/(256/8)) 
+	b = int(b/(256/8)) 
+	c = (g << 6)+(r << 3)+(b << 0)
+	
+	fbuf += "0x"+strf("%04X",c)
+//	fbuf += "0x"+strf("%02X",c & 255)
+//	fbuf += ","
+//	fbuf += "0x"+strf("%02X",c >> 8)
+next
+fbuf += "\n};\n"
+
+dialog "c",17,"cで保存"
+if(refstr != ""){
+	fname = refstr
+	bsave fname,fbuf,strlen(fbuf)
+}
+gosub *close_window1
+return
+
+//---------header fileで保存(gameboy 4 color)
+//カラーコードが大きいほど黒
+*csrc_gameboy
+gosub *gcopy_0_to_1	//window0から1へコピー
+fbuf = ""
+fbuf += "const char tile[] = {\n"
+dim gbuf,8,8
+
+cellcnt = int(w/8)
+chmax = int(w*h/(8*8))
+flag = 0
+for chnum,0,chmax
+	x1 = (chnum \ cellcnt)*8
+	y1 = int(chnum / cellcnt)*8
+	for y,0,8
+		for x,0,8
+			pget x+x1,y+y1
+			c = (ginfo(16)+ginfo(17)+ginfo(18))/3
+			if (c < 96):              c=3 //黒
+			if (c >= 96)and(c <= 128):c=2 //暗い灰色
+			if (c > 128)and(c <= 192):c=1 //明るい灰色
+			if (c > 192):             c=0 //白 or 透明
+			gbuf(x,y) = c
+		next
+	next
+	for y,0,8
+		for depth,0,2	//2プレーンに分解
+			tmp = 0
+			for x,0,8
+				if((1 << depth) and gbuf(x,y)){
+					tmp += (0x80 >> x)
+				}
+			next
+			if(flag > 0):fbuf += ","
+			flag++
+			fbuf += "0x"+strf("%02x",tmp)
+		next
+	next
+	fbuf += " /*chara"+str(chnum)+"*/\n"
+next
+fbuf += "};\n"
+
+dialog "h",17,"headerで保存"
+if(refstr != ""){
+	fname = refstr
+	bsave fname,fbuf,strlen(fbuf)
+}
+gosub *close_window1
+return
+
+//---------header fileで保存(famicom 4 color)
+*csrc4color
+gosub *gcopy_0_to_1	//window0から1へコピー
+fbuf = ""
+fbuf += "const char pattern[] = {\n"
+dim gbuf,8,8
+
+cellcnt = int(w/8)
+chmax = int(w*h/(8*8))
+flag = 0
+for chnum,0,chmax
+	x1 = (chnum \ cellcnt)*8
+	y1 = int(chnum / cellcnt)*8
+	for y,0,8
+		for x,0,8
+			pget x+x1,y+y1
+			c = (ginfo(16)+ginfo(17)+ginfo(18))/3
+			if (c < 96):              c=0
+			if (c >= 96)and(c <= 128):c=1
+			if (c > 128)and(c <= 192):c=2
+			if (c > 192):             c=3
+			gbuf(x,y) = c
+		next
+	next
+	for depth,0,2	//2プレーンに分解
+		for y,0,8
+			tmp = 0
+			for x,0,8
+				if((1 << depth) and gbuf(x,y)){
+					tmp += (0x80 >> x)
+				}
+			next
+			if(flag > 0):fbuf += ","
+			flag++
+			fbuf += "0x"+strf("%02x",tmp)
+		next
+	next
+	fbuf += " /*chara"+str(chnum)+"*/\n"
+next
+fbuf += "};\n"
+
+dialog "h",17,"headerで保存"
+if(refstr != ""){
+	fname = refstr
+	bsave fname,fbuf,strlen(fbuf)
+}
+gosub *close_window1
+return
+
+//-----Cソース(1bit)
+*csrc2color
+gosub *gcopy_0_to_1	//window0から1へコピー
+fbuf = ""
+fbuf += "const char chara[] = {\n"
+
+cellcnt = int(w/8)
+chmax = int(w*h/(8*8))
+flag=0
+for chnum,0,chmax
+	x1 = (chnum \ cellcnt)*8
+	y1 = int(chnum / cellcnt)*8
+	for y,0,8
+		tmp = 0
+		for x,0,8
+			pget x+x1,y+y1
+			c = (ginfo(16)+ginfo(17)+ginfo(18))/3 	// 256諧調
+			c = int(c/128)	// 256諧調 -> 2諧調
+			tmp <<= 1
+			if(c):tmp=tmp or 1
+		next
+		if(flag==0){
+			flag=1
+		}else{
+			fbuf += ","
+		}
+		fbuf += "0x"+strf("%02x",tmp)
+	next
+	fbuf += " /*font"+str(chnum+32)+"*/\n"
+next
+fbuf += "};\n"
+
+dialog "h",17,"headerで保存"
+if(refstr != ""){
+	fname = refstr
+	bsave fname,fbuf,strlen(fbuf)
+}
+
+gosub *close_window1
+return
+
+//---------2bit=4color binary保存
+*filesave_fcchr
+gosub *gcopy_0_to_1	//window0から1へコピー
+
+cellcnt = int(w/8)
+chmax = int(w*h/(8*8))
+fp = chmax*16	//1タイル16BYTES
+sdim fbuf,fp
+for tmp,0,fp
+	fbuf.tmp = 0
+next
+
+for chnum,0,chmax
+	x1 = (chnum \ cellcnt)*8
+	y1 = int(chnum / cellcnt)*8
+	for y,0,8
+		ptr = (16*chnum)+y
+		for x,0,8
+			pget x+x1,y+y1
+			c = (ginfo(16)+ginfo(17)+ginfo(18))/3 	// gray scale 256諧調
+			if (c < 96):c=0
+			if (c >= 96)and(c <= 128):c=1
+			if (c > 128)and(c <= 192):c=2
+			if (c > 192):c=3
+			if(c and 1){
+				tmp = peek(fbuf,ptr)
+				tmp += (0x80 >> x)
+				poke fbuf,ptr,tmp
+			}
+			if(c and 2){
+				tmp = peek(fbuf,ptr+8)
+				tmp += (0x80 >> x)
+				poke fbuf,ptr+8,tmp
+			}
+		next
+	next
+next
+
+dialog "chr",17,"chrで保存"
+if(refstr != ""){
+	fname = refstr
+	bsave fname,fbuf,fp
+}
+gosub *close_window1
+return
+	
+//--------------16色 BMP save
+*filesave_c16
+gosub *gcopy_0_to_1	//window0から1へコピー
+
+bmpx=0 //開始点x
+bmpy=0 //開始点y
+bmpw=w //幅[pixel]
+bmph=h //高さ[pixel]
+		
+headersize = (INFOHSIZE + FILEHSIZE + (4 * COL_MAX)) //ヘッダサイズ
+datasize = (bmpw * (BINPACK / BITPIX) * bmph)  //データサイズ
+totalsize = datasize + headersize //ファイル全体サイズ
+sdim fbuf,totalsize
+
+fp=0
+    //--------------file header
+a= 0x42:gosub *savebyte
+a= 0x4D:gosub *savebyte
+a= totalsize:gosub *savelong //ファイル全体サイズ
+a= 0:gosub *savelong
+a= headersize:gosub *savelong  //ヘッダ全体サイズ
+    //---info header
+a= INFOHSIZE:gosub *savelong  //header size
+a= bmpw:gosub *savelong   //width
+a= bmph:gosub *savelong  //height
+a= 1:gosub *saveword          //plane
+a= BITPIX:gosub *saveword     //bitcount
+a= 0:gosub *savelong
+a= datasize:gosub *savelong  //画像データサイズ
+a= 0:gosub *savelong
+a= 0:gosub *savelong
+a= 0:gosub *savelong
+a= 0:gosub *savelong
+    //---color table
+a= 0x000000:gosub *savelong //0:black      0000
+a= 0x800000:gosub *savelong //1:red        0001
+a= 0x008000:gosub *savelong //2:green      0010
+a= 0x808000:gosub *savelong //3:yellow     0011
+a= 0x000080:gosub *savelong //4:blue       0100
+a= 0x800080:gosub *savelong //5:magenta    0101
+a= 0x008080:gosub *savelong //6:cyan       0110
+a= 0x808080:gosub *savelong //7:dark gray  0111
+a= 0xC0C0C0:gosub *savelong //8:light gray 1000
+a= 0xff0000:gosub *savelong //9:red        1001
+a= 0x00ff00:gosub *savelong //10:green     1010
+a= 0xffff00:gosub *savelong //11:yellow    1011
+a= 0x0000ff:gosub *savelong //12:blue      1100
+a= 0xff00ff:gosub *savelong //13:magenta   1101
+a= 0x00ffff:gosub *savelong //14:cyan      1110
+a= 0xffffff:gosub *savelong //15:white     1111
+
+    //---画像データ
+a=0
+packcnt=0
+for y,bmph-1,-1,-1
+	for x,0,bmpw,8
+		for i,0,8
+			pget bmpx+x+i,bmpy+y			
+			a = a<<4
+			r = ginfo(16)
+			g = ginfo(17)
+			b = ginfo(18)
+			if(r){	a=a | 1 }
+			if(g){	a=a | 2 }
+			if(b){	a=a | 4 }
+			if (r>128) or (g>128) or (b>128){
+				a=a | 8		//8～15番
+				if(r<200)and(g<200)and(b<200){
+					a=a & 0xf8 //ライトグレー(8番)
+				}
+			}
+			packcnt+=4	// 4bit/pixel 
+			if(packcnt>=8){
+				packcnt=0
+				gosub *savebyte
+				a=0
+			}
+		next
+	next
+next
+
+dialog "bmp",17,"16色BMPで保存"
+if(refstr!=""){
+	fname=refstr
+	bsave fname,fbuf,fp
+}
+gosub *close_window1
+return
+    
+*savebyte
+	poke fbuf,fp,(a & 0xff)
+	fp++	
+	return
+
+*saveword
+	poke fbuf,fp,(a & 0xff)
+	fp++	
+	poke fbuf,fp,((a>>8) & 0xff)
+	fp++	
+	return
+
+*savelong
+	poke fbuf,fp,(a & 0xff)
+	fp++	
+	poke fbuf,fp,((a>>8) & 0xff)
+	fp++	
+	poke fbuf,fp,((a>>16) & 0xff)
+	fp++	
+	poke fbuf,fp,((a>>24) & 0xff)
+	fp++	
+	return
+	
+	
