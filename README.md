@@ -1,1 +1,2 @@
-# hsp_spedit
+# spedit
+sprite editor  for HSP3
