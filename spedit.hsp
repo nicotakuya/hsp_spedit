@@ -1451,7 +1451,7 @@ for chnum,0,chmax
 		next
 	}
 	
-	//BAT
+	//BAT(tile num + palette)
 	c = tilestart + chcode + (tilepal << 12)
 	poke fbuf2,batsize,(c & 255)	//下位
 	batsize++
@@ -1472,8 +1472,26 @@ if (stat==6){	//はい
 	bsave fname,fbuf,patternsize
 }
 
+// 16色 * 16パレット * 2バイト(9bit color)
 sdim fbuf,2*16*16
+
+// パレットにダミーを格納
 fp = 0
+for j,0,16
+	for i,0,16
+		r = int(i*7/15)	// 3+3+3bit
+		g = int(i*7/15) 
+		b = int(i*7/15) 
+		c =	(g << 6)+(r << 3)+(b << 0)
+		poke fbuf,fp,(c & 255)	//下位
+		fp++
+		poke fbuf,fp,(c >> 8)	//上位
+		fp++
+	next
+next
+
+// tilepal番パレットに結果を格納
+fp = tilepal * 2 * 16
 for i,0,16
 	c = pal(i)
 	r = (c >> 16) & 255
@@ -1491,7 +1509,7 @@ next
 fname="bg_palette.bin"
 dialog fname+"で保存",2
 if (stat==6){	//はい
-	bsave fname,fbuf,fp
+	bsave fname,fbuf,2*16*16
 }
 
 fname="bg_bat.bin"
