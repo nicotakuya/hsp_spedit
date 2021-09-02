@@ -24,7 +24,8 @@ size=128
 buffer 2,size,size,mode	//copy/paste buffer
 gsel 0
 
-title "Sprite editor"
+appname = "SPEDIT"
+title appname
 
 gx=512+16	//work area
 gy=56
@@ -222,16 +223,20 @@ while 1
 	if (k):gosub *click2  //マウスの右ボタン
 wend
 //-------
-*fileload
-gosub *loadgraphic
-if filename=="":return
+*printfilename
 ptr = strlen(filename)
 repeat
 	if(ptr<=0):break
-	if(peek(filename,ptr-1)==$5C):break
+	if(peek(filename,ptr-1)==$5C):break	//yen
 	ptr--
 loop
-title "SPEDIT :"+strmid(filename,ptr,255)
+title appname+" '"+strmid(filename,ptr,255)+"'"
+return	
+//-------
+*fileload
+gosub *loadgraphic
+if filename=="":return
+gosub *printfilename
 
 r=0:g=0:b=0
 r2=TOUMEI_R:g2=TOUMEI_G:b2=TOUMEI_B:gosub *colorchange	// 黒色 --> 透明
@@ -481,8 +486,11 @@ return
 *filesave
 gosub *gcopy_0_to_1	//window0から1へコピー
 if (filename!=""){
-	dialog "Yes="+filename+"で保存 / No=別名保存",2
+	dialog "Yes=save '"+filename+"' / No=save as",2
 	if(stat==6){	//yes
+		if (instr(filename,0,".bmp")<0) and (instr(filename,0,".BMP")<0){
+			filename +=".BMP"
+		}
 		bmpsave filename
 		gosub *close_window1
 		return
@@ -492,7 +500,11 @@ if (filename!=""){
 dialog "bmp",17,"BMPで保存"
 if(refstr != ""){
 	filename = refstr
+	if (instr(filename,0,".bmp")<0) and (instr(filename,0,".BMP")<0){
+		filename +=".BMP"
+	}
 	bmpsave filename
+	gosub *printfilename
 }
 gosub *close_window1
 return
@@ -1900,7 +1912,7 @@ totalsize = datasize + headersize //ファイル全体サイズ
 sdim fbuf,totalsize
 
 fp=0
-    //--------------file header
+    //---file header
 a= 0x42:gosub *savebyte
 a= 0x4D:gosub *savebyte
 a= totalsize:gosub *savelong //ファイル全体サイズ
@@ -1969,6 +1981,9 @@ next
 dialog "bmp",17,"16色BMPで保存"
 if(refstr!=""){
 	fname=refstr
+	if (instr(fname,0,".bmp")<0) and (instr(fname,0,".BMP")<0){
+		fname +=".BMP"
+	}
 	bsave fname,fbuf,fp
 }
 gosub *close_window1
