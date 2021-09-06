@@ -61,14 +61,14 @@ c="255,  0,  0":x2=x1+15:gosub *c2rgb :x1 += 16
 c="  0,255,255":x2=x1+15:gosub *c2rgb :x1 += 16
 c="255,  0,255":x2=x1+15:gosub *c2rgb :x1 += 16
 c="255,255,255":x2=x1+15:gosub *c2rgb :x1 += 16
-c=" 32, 32, 32":x2=x1+15:gosub *c2rgb :x1 += 16
+c="128,128,128":x2=x1+15:gosub *c2rgb :x1 += 16
 c="  0,  0,128":x2=x1+15:gosub *c2rgb :x1 += 16
 c="  0,128,  0":x2=x1+15:gosub *c2rgb :x1 += 16
 c="128,128,  0":x2=x1+15:gosub *c2rgb :x1 += 16
 c="128,  0,  0":x2=x1+15:gosub *c2rgb :x1 += 16
-c="  0,120,120":x2=x1+15:gosub *c2rgb :x1 += 16
 c="128,  0,128":x2=x1+15:gosub *c2rgb :x1 += 16
-c="128,128,128":x2=x1+15:gosub *c2rgb :x1 += 16
+c="192,192,192":x2=x1+15:gosub *c2rgb :x1 += 16
+c=" 32, 32, 32":x2=x1+15:gosub *c2rgb :x1 += 16
 
 x1=palx
 y1=y1+16
@@ -108,8 +108,6 @@ pos 320+32,512+8+20+8
 button gosub "Resize Canvas",*resize_canvas
 
 btnx = 1056
-//x=btnx:y=56:pos x,y
-//print "Work Area"
 
 objsize 64,24
 x=btnx +32:y+=56+24:pos x,y
@@ -169,6 +167,8 @@ button gosub "paste",*buffpaste
 
 x=btnx:y += 24:pos x,y
 button gosub "all clear",*allclr
+x+=64:pos x,y
+button gosub "half tone",*halftone
 x=btnx:y += 24:pos x,y
 button gosub "box",*boxfill
 x += 64:pos x,y
@@ -486,17 +486,18 @@ return
 *filesave
 gosub *gcopy_0_to_1	//window0から1へコピー
 if (filename!=""){
-	dialog "Yes=save '"+filename+"' / No=save as",2
-	if(stat==6){	//yes
+	dialog "Yes=overwrite / No=save as",2
+	if(stat==6){	// yes=overwrite
 		if (instr(filename,0,".bmp")<0) and (instr(filename,0,".BMP")<0){
 			filename +=".BMP"
 		}
 		bmpsave filename
 		gosub *close_window1
+		gosub *printfilename
 		return
 	}
 }
-
+// save as
 dialog "bmp",17,"BMPで保存"
 if(refstr != ""){
 	filename = refstr
@@ -504,9 +505,9 @@ if(refstr != ""){
 		filename +=".BMP"
 	}
 	bmpsave filename
-	gosub *printfilename
 }
 gosub *close_window1
+gosub *printfilename
 return
 
 //----色変換
@@ -669,6 +670,19 @@ return
 redraw 0
 color colr,colg,colb
 boxf fx,fy,fx+sizew-1,fy+sizeh-1
+redraw 1
+gosub *draw
+return
+
+//----------
+*halftone
+redraw 0
+color colr,colg,colb
+for y,0,sizeh
+for x,0,sizew
+if ((x+y) & 1) :pset fx+x,fy+y
+next
+next
 redraw 1
 gosub *draw
 return
