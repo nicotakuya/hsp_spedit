@@ -2,18 +2,19 @@
 // for HSP 3.x(windows)
 // by takuya matsubara
 
-#define COL_MAX  16  //16色BMP カラーテーブルの数
-#define BINPACK   8  //16色BMP 1バイトパックするbit数
-#define BITPIX    4  //16色BMP 1ピクセルあたりのビット数 4bit=16色
-#define INFOHSIZE 40 //16色BMP INFOヘッダサイズ
-#define FILEHSIZE 14 //16色BMP ヘッダサイズ
+#define COL_MAX  16  //16color BMP カラーテーブルの数
+#define BINPACK   8  //16color BMP 1バイトパックするbit数
+#define BITPIX    4  //16color BMP 1ピクセルあたりのビット数 4bit=16色
+#define INFOHSIZE 40 //16color BMP INFOヘッダsize
+#define FILEHSIZE 14 //16color BMP ヘッダsize
 
-#define TOUMEI_R	0	//透明
-#define TOUMEI_G	128	//透明
-#define TOUMEI_B	128	//透明
+#define TOUMEI_R	0	//transparent
+#define TOUMEI_G	128	//transparent
+#define TOUMEI_B	128	//transparent
 
 w = 512	//bmp width [pixel]
 h = 512 //bmp height[pixel]
+toumei = 0 // transparent
 
 mode=0	// 初期化する画面モード
 sx=0	// ウィンドウの配置X（1ドット単位）
@@ -44,34 +45,16 @@ sizew = 16		//worksize
 sizeh = 16
 gosub *putworksize
 
-zoom = 32		//倍率
+zoom = 32		//zoom size
 workw = sizew*zoom
 workh = sizeh*zoom
 
 palx = 816
+gosub *getpalette2
+gosub *drawpalette
+
 x1 = palx
-y1 = 0
-y2 = y1+16
-
-c="  0,128,128":x2=x1+15:gosub *c2rgb :x1 += 16
-c="  0,  0,255":x2=x1+15:gosub *c2rgb :x1 += 16
-c="  0,255,  0":x2=x1+15:gosub *c2rgb :x1 += 16
-c="255,255,  0":x2=x1+15:gosub *c2rgb :x1 += 16
-c="255,  0,  0":x2=x1+15:gosub *c2rgb :x1 += 16
-c="  0,255,255":x2=x1+15:gosub *c2rgb :x1 += 16
-c="255,  0,255":x2=x1+15:gosub *c2rgb :x1 += 16
-c="255,255,255":x2=x1+15:gosub *c2rgb :x1 += 16
-c="128,128,128":x2=x1+15:gosub *c2rgb :x1 += 16
-c="  0,  0,128":x2=x1+15:gosub *c2rgb :x1 += 16
-c="  0,128,  0":x2=x1+15:gosub *c2rgb :x1 += 16
-c="128,128,  0":x2=x1+15:gosub *c2rgb :x1 += 16
-c="128,  0,  0":x2=x1+15:gosub *c2rgb :x1 += 16
-c="128,  0,128":x2=x1+15:gosub *c2rgb :x1 += 16
-c="192,192,192":x2=x1+15:gosub *c2rgb :x1 += 16
-c=" 32, 32, 32":x2=x1+15:gosub *c2rgb :x1 += 16
-
-x1=palx
-y1=y1+16
+y1 = 16
 for i,0,16
 	color i*16,i*16,i*16
 	boxf x1,y1,x1+15,y1+8
@@ -176,13 +159,7 @@ button gosub "circle",*circl
 x=btnx:y += 36:pos x,y
 
 objsize 128,24
-button gosub "fullcolor bmp save",*filesave
-
-//y += 24:pos x,y
-//button gosub "16color bmp save",*filesave_c16
-
-//y += 24:pos x,y
-//button gosub "chr(fc) save",*filesave_chr
+button gosub "fullcolor BMP save",*filesave
 
 y += 24:pos x,y
 button gosub "convert save",*filesave_csrc
@@ -191,24 +168,13 @@ y += 24:pos x,y
 button gosub "load",*fileload
 
 pos 128+32,512+20+16
-button gosub "透明色on/off",*maskonoff
+button gosub "transparent on/off",*maskonoff
 
-//title "load BMP/PNG"
-//dialog "*",16,"file"
-//if(stat != 1){
-//  	filename = ""
-//}else{
-//	filename = refstr
-//	pos fx,fy
-//	picload filename,1
-//}
 color 0,0,0
 boxf 256+32,512+8,512,512+32
 color 255,255,255
 pos 256+32,512+8
 print "Canvas "
-//objsize 64,20
-
 
 gosub *fileload
 
@@ -218,9 +184,9 @@ while 1
 	wait 10	
 	x = mousex : y = mousey
 	getkey k,1
-	if (k):gosub *click1  //マウスの左ボタン
+	if (k):gosub *click1  //マウスのleft button
 	getkey k,2
-	if (k):gosub *click2  //マウスの右ボタン
+	if (k):gosub *click2  //マウスのright button
 wend
 //-------
 *printfilename
@@ -238,24 +204,36 @@ gosub *loadgraphic
 if filename=="":return
 gosub *printfilename
 
-r=0:g=0:b=0
-r2=TOUMEI_R:g2=TOUMEI_G:b2=TOUMEI_B:gosub *colorchange	// 黒色 --> 透明
-toumei = 1
+toumei = 0
 gosub *draw
+return
+
+//-------
+*black2transparent
+// 黒色 --> 透明
+r=0        :g=0        :b=0
+r2=TOUMEI_R:g2=TOUMEI_G:b2=TOUMEI_B
+gosub *colorchange
+return
+
+//-------
+*transparent2black
+// 透明 --> 黒色 
+r=TOUMEI_R:g=TOUMEI_G:b=TOUMEI_B
+r2=0      :g2=0      :b2=0
+gosub *colorchange
 return
 
 //-------
 *maskonoff
 if(toumei == 1){
-	r=TOUMEI_R:g=TOUMEI_G:b=TOUMEI_B
-	r2=0:g2=0:b2=0	// 透明->黒色 
+	gosub *transparent2black
 	toumei = 0
 }else{
-	r=0:g=0:b=0
-	r2=TOUMEI_R:g2=TOUMEI_G:b2=TOUMEI_B	// 黒色 --> 透明
+	gosub *black2transparent
 	toumei = 1
 }
-gosub *colorchange
+
 gosub *draw
 return
 
@@ -359,8 +337,8 @@ if(stat != 1){
 			gosub *loadnesfile
 		}else{
 			picload filename
-			w=ginfo(12)	//クライアント領域Xサイズ
-			h=ginfo(13) //クライアント領域Yサイズ
+			w=ginfo(12)	//client領域Xsize
+			h=ginfo(13) //client領域Ysize
 		}
 	}
 }
@@ -368,7 +346,32 @@ gosub *gcopy_1_to_0
 objprm 0,w
 objprm 1,h
 
+gosub *bmpfilecheck
 return
+//----
+*bmpfilecheck
+if(instr(filename,0,".bmp")<0)and((instr(filename,0,".BMP")<0)):return
+sdim fbuf,8192
+bload filename,fbuf
+dim pal,16
+
+ptr=28
+depth = peek(fbuf,ptr)
+depth += peek(fbuf,ptr+1)<<8
+if (depth != 4):return
+
+for i,0,16
+    ptr = 54+(4*i)
+	c = peek(fbuf,ptr)
+	c += peek(fbuf,ptr+1)<<8
+	c += peek(fbuf,ptr+2)<<16
+	c += peek(fbuf,ptr+3)<<24
+	pal(i)=c
+next
+gosub *drawpalette
+
+return
+
 //----
 *resize_canvas
 dialog "(Resize)Are you sure?",2
@@ -376,17 +379,17 @@ if (stat!=6){
 	return
 }
 screen 1,reqw,reqh,mode	//window1を作成
-color TOUMEI_R,TOUMEI_G,TOUMEI_B
+color 0,0,0
 boxf 0,0,reqw-1,reqh-1
 
 gsel 1
 pos 0,0
 x1=0:y1=0
 gcopy 0,x1,y1,w,h
-//r=TOUMEI_R:g=TOUMEI_G:b=TOUMEI_B
-//r2=0:g2=0:b2=0:gosub *colorchange	// 青緑->黒色 
 w = reqw
 h = reqh
+if(toumei):gosub *black2transparent
+
 gsel 0
 gosub *gcopy_1_to_0
 gosub *close_window1
@@ -446,7 +449,7 @@ return
 sdim fbuf,512*1024+16
 title "load nes(famicom rom image) file"
 bload filename,fbuf	// nesファイル読み込み
-totalsize = strsize	// ファイルサイズ
+totalsize = strsize	// ファイルsize
 ptr = 16384*peek(fbuf,4) // prg size[16384 Byte]
 chrdatasize = 8192*peek(fbuf,5) // chr size[8192 Byte]
 mapper = (peek(fbuf,6) >> 4)+(peek(fbuf,7) & $f0)
@@ -457,7 +460,7 @@ if(datasize==0){
 	return
 }
 
-ptr += 16 //ヘッダサイズ追加
+ptr += 16 //ヘッダsize追加
 cellcnt = 16
 goto *loadchrsub
 
@@ -479,8 +482,7 @@ gsel 1
 pos 0,0
 x1=0:y1=0
 gcopy 0,x1,y1,w,h
-r=TOUMEI_R:g=TOUMEI_G:b=TOUMEI_B
-r2=0:g2=0:b2=0:gosub *colorchange	// 青緑->黒色 
+if(toumei):gosub *transparent2black
 return
 //----------
 *filesave
@@ -613,8 +615,21 @@ return
 	r =int(strmid(c,0,idx))
 	g =int(strmid(c,idx+1,idx2+idx+1))
 	b =int(strmid(c,idx+1+idx2+1,3))
+	pal(i) = (r<<16)+(g<<8)+b
+	i++
+return
+
+//---
+*drawpalette
+for i,0,16
+	x1=(i*16)+palx
+	y1=1
+	r = (pal(i) >> 16) & 0xff 
+	g = (pal(i) >> 8) & 0xff 
+	b = pal(i) & 0xff 
 	color r,g,b
-	boxf x1,y1,x2,y2
+	boxf x1,y1,x1+14,y1+13
+next
 return
 
 //-----------
@@ -704,7 +719,11 @@ return
 //----------
 *circl
 redraw 0
-color 0,128,128
+if(toumei==1){
+	color TOUMEI_R,TOUMEI_G,TOUMEI_B
+}else{
+	color 0,0,0
+}
 boxf fx,fy,fx+sizew-1,fy+sizeh-1
 color colr,colg,colb
 circle fx,fy,fx+sizew,fy+sizeh,1
@@ -726,7 +745,11 @@ gsel 2
 pos 0,0
 gcopy 0,fx,fy,sizew,sizeh
 gsel 0
-color 0,128,128
+if(toumei==1){
+	color TOUMEI_R,TOUMEI_G,TOUMEI_B
+}else{
+	color 0,0,0
+}
 boxf fx,fy,fx+sizew-1,fy+sizeh-1
 gosub *draw
 return
@@ -903,7 +926,11 @@ return
 *buffclr
 redraw 0
 gsel 2
-color 0,128,128
+if(toumei==1){
+	color TOUMEI_R,TOUMEI_G,TOUMEI_B
+}else{
+	color 0,0,0
+}
 boxf 0,0,sizew-1,sizeh-1
 return
 
@@ -914,13 +941,13 @@ for y,0,sizeh
 	for x,0,sizew
 		pget fx+x,fy+y
 		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
-		if((r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
-			// 透明
-		}else{
-			tmp = (r+g+b)/3
-			color tmp,tmp,tmp
-			pset fx+x,fy+y
+		if((toumei==1)and(r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
+			// transparent
+			_continue
 		}
+		tmp = (r+g+b)/3
+		color tmp,tmp,tmp
+		pset fx+x,fy+y
 	next
 next
 gosub *draw
@@ -933,21 +960,20 @@ for y,0,sizeh
 		pget fx+x,fy+y
 		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
 		if((r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
-			// 透明
-		}else{
-			r = 255-r
-			g = 255-g
-			b = 255-b
-			color r,g,b
-			pset fx+x,fy+y
+			// transparent
+			_continue
 		}
+		r = 255-r
+		g = 255-g
+		b = 255-b
+		color r,g,b
+		pset fx+x,fy+y
 	next
 next
 gosub *draw
 return
 
 //----
-
 *srccol
 srcr=colr
 srcg=colg
@@ -977,56 +1003,62 @@ next
 gosub *draw
 return
 
-//---------16色パレット抽出
+//---------get palette 16color 
 *getpalette
+//gosub *getpalette2:return	// windows paint palette
 dim pal,16
 for i,0,16
 	pal(i)=0
 next
-cmax = 1	//色数
-for x,0,w
-	for y,0,h
+cmax = 1	// 色数
+for y,0,h
+	for x,0,w
 		pget x,y
 		r = ginfo(16)
 		g = ginfo(17)
 		b = ginfo(18)
-		c = (r << 16)+(g << 8)+(b << 0)
-		// パレット検索
+		c = (r << 16)+(g << 8)+(b << 0) // 24bit color
+		// search
 		for i,0,16
-			if(pal(i)==c):_break
+			if(pal(i)==c):_break	// find
 		next
-		if(i>=16){	// 色を登録
+		if(i>=16){	// not found
 			if(cmax<16){
-				pal(cmax) = c
-				cmax++	//色数
+				pal(cmax) = c	// append color
+				cmax++
 			}else{
-				cmax=17
+				cmax=17	// overflow error!
+				_break
 			}
 		}
 	next
+	if(cmax>16):_break
 next
+if(cmax>16){
+	dialog "error:too many colors(max 16 color)."
+}
 return
 
-//----------固定16色パレット
+//----------16color palette(windows paint)
 *getpalette2
 dim pal,16
-pal(0)= 0x000000 //0:black      
-pal(1)= 0x800000 //1:red        
-pal(2)= 0x008000 //2:green      
-pal(3)= 0x808000 //3:yellow     
-pal(4)= 0x000080 //4:blue       
-pal(5)= 0x800080 //5:magenta    
-pal(6)= 0x008080 //6:cyan       
-pal(7)= 0x808080 //7:dark gray  
-pal(8)= 0xC0C0C0 //8:light gray 
-pal(9)= 0xff0000 //9:red        
+pal(0) = 0x000000 //0:black      
+pal(1) = 0x800000 //1:dark red        
+pal(2) = 0x008000 //2:dark green      
+pal(3) = 0x808000 //3:dark yellow     
+pal(4) = 0x000080 //4:dark blue       
+pal(5) = 0x800080 //5:dark magenta    
+pal(6) = 0x008080 //6:dark cyan       
+pal(7) = 0x808080 //7:dark gray  
+pal(8) = 0xC0C0C0 //8:light gray 
+pal(9) = 0xff0000 //9:red        
 pal(10)= 0x00ff00 //10:green     
 pal(11)= 0xffff00 //11:yellow    
 pal(12)= 0x0000ff //12:blue      
 pal(13)= 0xff00ff //13:magenta   
 pal(14)= 0x00ffff //14:cyan      
 pal(15)= 0xffffff //15:white     
-cmax=16
+cmax = 16
 return
 
 //----------
@@ -1038,37 +1070,37 @@ tilepal=0
 tilesame=0	//同一パターン検出機能(0=disable)
 x=0:y=0
 pos x,y
-button gosub "BMPで保存 固定パレット16色に変換",*filesave_c16
+button gosub "Save BMP 4bit=16colors",*filesave_c16
 y+=25
 pos x,y
-button gosub "headerで保存 2bit=4色(Gameboy)",*csrc_gameboy
+button gosub "Save header(.h) 2bit=4colors(Gameboy)",*csrc_gameboy
 y+=25
 pos x,y
-button gosub "headerで保存 2bit=4色(Famicom)",*csrc4color
+button gosub "Save header(.h) 2bit=4colors(Famicom)",*csrc4color
 y+=25
 pos x,y
-button gosub "binaryで保存 2bit=4色(Famicom)",*filesave_fcchr
+button gosub "Save binary(.chr) 2bit=4colors(Famicom)",*filesave_fcchr
 y+=25
 pos x,y
-button gosub "binaryで保存 4bit=16色(super famicom)",*c16color_sfami
+button gosub "Save binary(.bin) 4bit=16colors(super famicom)",*c16color_sfami
 y+=25
 pos x,y
-button gosub "headerで保存 1bit=2色",*csrc2color
+button gosub "Save header(.h) 1bit=2colors(8x8pixel font)",*csrc2color
 y+=25
 pos x,y
-button gosub "cで保存 4bit=16色(PCEngine Sprite)",*c16color_pce
+button gosub "Save C 4bit=16colors(PC Engine Sprite)",*c16color_pce
 y+=25
 pos x,y
-button gosub "binaryで保存 4bit=16色(PC Engine Sprite)",*c16color_pce_sp
+button gosub "Save binary(.bin) 4bit=16colors(PC Engine Sprite)",*c16color_pce_sp
 
 y+=25
 pos x+16,y
-print "開始タイル番号(256-)"
+print "start tile number(256-)"
 pos x+200,y
 input tilestart,100,20,4
 y+=25
 pos x+16,y
-print "パレット番号(0-15)"
+print "palette number(0-15)"
 pos x+200,y
 input tilepal,100,20,4
 y+=25
@@ -1076,14 +1108,14 @@ pos x+16,y
 chkbox "類似パターンのVRAM節約",tilesame
 y+=25
 pos x,y
-button gosub "binaryで保存 4bit=16色(PC Engine BG)",*c16color_pce_bg
+button gosub "save binary(.bin) 4bit=16color(PC Engine BG)",*c16color_pce_bg
 
 y+=25
 pos x,y
-button gosub "binaryで保存 4bit=16色TESTパターン(PC Engine BG)",*c16color_pce_bgtest
+button gosub "save binary(.bin) 8x15+1Color TEST(PC Engine BG)",*c16color_pce_bgtest
 y+=25
 pos x,y
-button gosub "binaryで保存 4bit=16色(PC Engine MAPCHIP)",*c16color_pce_tile
+button gosub "save binary(.bin) 4bit=16color(PC Engine MAPCHIP)",*c16color_pce_mapchip
 
 y+=25
 pos x,y
@@ -1104,10 +1136,7 @@ return
 *c16color_sfami
 gosub *gcopy_0_to_1	//window0から1へコピー
 gosub *getpalette	//パレットの取得
-if(cmax>=17){
-	dialog "fatal error:色数が16色を超えてます"
-	return
-}
+if(cmax > 16):return	//error
 
 dim gbuf,8,8
 
@@ -1198,11 +1227,8 @@ for i,0,16
 	r = int(r/((1<<8)/(1<<5)))	//8+8+8bit→5+5+5bit に変換
 	g = int(g/((1<<8)/(1<<5))) 
 	b = int(b/((1<<8)/(1<<5))) 
-	c =	(b << 10)+(g << 5)+(r << 0)
-	poke fbuf,fp,(c & 255)	//下位
-	fp++
-	poke fbuf,fp,(c >> 8)	//上位
-	fp++
+	a =	(b << 10)+(g << 5)+(r << 0)
+	gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 next
 fname = strmid(filename,0,ptr)+"_palette.bin"
 dialog fname+"で保存",2
@@ -1217,10 +1243,7 @@ return
 *c16color_pce_sp
 gosub *gcopy_0_to_1	//window0から1へコピー
 gosub *getpalette
-if(cmax>=17){
-	dialog "fatal error:色数が16色を超えてます"
-	return
-}
+if(cmax > 16):return
 
 dim gbuf,16,16
 
@@ -1251,16 +1274,13 @@ for chnum,0,chmax
 	next
 	for depth,0,4	//4プレーンに分解
 		for y,0,16
-			tmp = 0
+			a = 0
 			for x,0,16
 				if((1 << depth) and gbuf(x,y)){
-					tmp += (0x8000 >> x)
+					a += (0x8000 >> x)
 				}
 			next
-			poke fbuf,fp,(tmp & 255)	//下位
-			fp++
-			poke fbuf,fp,(tmp >> 8)		//上位
-			fp++
+			gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 		next
 	next
 next
@@ -1281,34 +1301,26 @@ for i,0,16
 	r = int(r/(256/8))	//8+8+8bit→3+3+3bit に変換
 	g = int(g/(256/8)) 
 	b = int(b/(256/8)) 
-	c = (g << 6)+(r << 3)+(b << 0)
-	poke fbuf,fp,(c & 255)	//下位
-	fp++
-	poke fbuf,fp,(c >> 8)	//上位
-	fp++
+	a = (g << 6)+(r << 3)+(b << 0)
+	gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 next
 fname="sp_palette.bin"
 dialog fname+"で保存",2
-if (stat==6){	//はい
+if (stat==6){	// yes
 	bsave fname,fbuf,fp
 }
 gosub *close_window1
 return
 
 //---------pc engine TILE
-*c16color_pce_tile
+*c16color_pce_mapchip
 gosub *gcopy_0_to_1	//window0から1へコピー
 gosub *getpalette
-if(cmax>=17){
-	dialog "fatal error:色数が16色を超えてます"
-	return
-}else{
-	dialog "使用色数="+str(cmax)
-}
+if(cmax > 16):return
+dialog "used colors="+str(cmax)
 
 dim gbuf,8,8
-
-// 8*8pixel * 4bitcolor / 8 = 32 Bytes
+// 8*8pixel * 4bitcolor / 8 = 32 Bytes(16Word)
 //32*28cell * 32Byte = 28672 Byte(14336 Word)
 
 chmax = int(w*h/(8*8))
@@ -1318,14 +1330,13 @@ sdim fbuf,32*chmax // filesize
 fp = 0
 for chnum,0,chmax
 	x1 = ((int(chnum/4)*2) \ cellcnt)*8
-	y1 = int(chnum / (cellcnt*4))*8*2
+	y1 = int(chnum / (cellcnt*2))*8*2
 	if((chnum \ 4)==1):	x1+=8
 	if((chnum \ 4)==2): y1+=8
 	if((chnum \ 4)==3){
 		x1+=8
 		y1+=8
 	}
-
 	for y,0,8
 		for x,0,8
 			pget x+x1,y+y1
@@ -1343,26 +1354,23 @@ for chnum,0,chmax
 	next
 	for depth,0,4,2	//4プレーンに分解
 		for y,0,8
-			tmp = 0
+			a = 0
 			for x,0,8
 				if((1 << (depth+0)) and gbuf(x,y)){
-					tmp += (0x80 >> x)
+					a += (0x80 >> x)
 				}
 				if((1 << (depth+1)) and gbuf(x,y)){
-					tmp += (0x8000 >> x)
+					a += (0x8000 >> x)
 				}
 			next
-			poke fbuf,fp,(tmp & 255)	//下位
-			fp++
-			poke fbuf,fp,(tmp>>8)	//上位
-			fp++		
+			gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 		next
 	next
 next
 
 fname="map_pattern.bin"
 dialog fname+"で保存",2
-if (stat==6){	//はい
+if (stat==6){	// yes
 	bsave fname,fbuf,fp
 }
 
@@ -1376,11 +1384,8 @@ for i,0,16
 	r = int(r/(256/8))	//8+8+8bit→3+3+3bit に変換
 	g = int(g/(256/8)) 
 	b = int(b/(256/8)) 
-	c =	(g << 6)+(r << 3)+(b << 0)
-	poke fbuf,fp,(c & 255)	//下位
-	fp++
-	poke fbuf,fp,(c >> 8)	//上位
-	fp++
+	a =	(g << 6)+(r << 3)+(b << 0)
+	gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 next
 fname="map_palette.bin"
 dialog fname+"で保存",2
@@ -1394,11 +1399,8 @@ return
 //---------pc engine BG
 *c16color_pce_bg
 gosub *gcopy_0_to_1	//window0から1へコピー
-gosub *getpalette	//パレットの取得
-if(cmax>=17){
-	dialog "fatal error:色数が16色を超えてます"
-	return
-}
+gosub *getpalette	// get palette
+if(cmax > 16):return
 
 dim gbuf,8,8
 
@@ -1508,11 +1510,8 @@ for j,0,16
 		r = int(i*7/15)	// 3+3+3bit
 		g = int(i*7/15) 
 		b = int(i*7/15) 
-		c =	(g << 6)+(r << 3)+(b << 0)
-		poke fbuf,fp,(c & 255)	//下位
-		fp++
-		poke fbuf,fp,(c >> 8)	//上位
-		fp++
+		a =	(g << 6)+(r << 3)+(b << 0)
+		gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 	next
 next
 
@@ -1526,11 +1525,8 @@ for i,0,16
 	r = int(r/(256/8))	//8+8+8bit→3+3+3bit に変換
 	g = int(g/(256/8)) 
 	b = int(b/(256/8)) 
-	c =	(g << 6)+(r << 3)+(b << 0)
-	poke fbuf,fp,(c & 255)	//下位
-	fp++
-	poke fbuf,fp,(c >> 8)	//上位
-	fp++
+	a =	(g << 6)+(r << 3)+(b << 0)
+	gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 next
 fname="bg_palette.bin"
 dialog fname+"で保存",2
@@ -1569,19 +1565,16 @@ for chnum,0,chmax
 	next
 	for depth,0,4,2	//4プレーンに分解
 		for y,0,8
-			tmp = 0
+			a = 0
 			for x,0,8
 				if((1 << (depth+0)) and gbuf(x,y)){
-					tmp += (0x80 >> x)
+					a += (0x80 >> x)
 				}
 				if((1 << (depth+1)) and gbuf(x,y)){
-					tmp += (0x8000 >> x)
+					a += (0x8000 >> x)
 				}
 			next
-			poke fbuf,fp,(tmp & 255)	//下位
-			fp++
-			poke fbuf,fp,(tmp>>8)	//上位
-			fp++		
+			gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 		next
 	next
 next
@@ -1601,11 +1594,8 @@ for i,0,256
 	r = int(r/(256/8))	//8bit→3bit に変換
 	g = int(g/(256/8)) 
 	b = int(b/(256/8)) 
-	c =	(g << 6)+(r << 3)+(b << 0)
-	poke fbuf,fp,(c & 255)	//下位
-	fp++
-	poke fbuf,fp,(c >> 8)	//上位
-	fp++
+	a =	(g << 6)+(r << 3)+(b << 0)
+	gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 next
 fname="bg_palette.bin"
 dialog fname+"で保存",2
@@ -1618,11 +1608,8 @@ fp=0
 for i,0,32*28
 	x = i \ 32
 	y = int(i/32)
-	c = 0x100+(i \ 16)+((y \ 16)*0x1000)	
-	poke fbuf,fp,(c & 255)	//下位
-	fp++
-	poke fbuf,fp,(c >> 8)	//上位
-	fp++
+	a = 0x100+(i \ 16)+((y \ 16)*0x1000)
+	gosub *saveword // fbuf[fp++]=a.Low: fbuf[fp++]=a.High
 next
 fname="bg_bat.bin"
 dialog fname+"で保存",2
@@ -1637,10 +1624,7 @@ return
 *c16color_pce
 gosub *gcopy_0_to_1	//window0から1へコピー
 gosub *getpalette
-if(cmax>=17){
-	dialog "fatal error:色数が16色を超えてます"
-	return
-}
+if(cmax > 16):return
 fbuf = ""
 //fbuf += "const char pattern[] = {\n"
 fbuf += "const int pattern[] = {\n"
@@ -1746,7 +1730,7 @@ for chnum,0,chmax
 			if (c < 96):              c=3 //黒
 			if (c >= 96)and(c <= 128):c=2 //暗い灰色
 			if (c > 128)and(c <= 192):c=1 //明るい灰色
-			if (c > 192):             c=0 //白 or 透明
+			if (c > 192):             c=0 //白
 			gbuf(x,y) = c
 		next
 	next
@@ -1824,7 +1808,7 @@ if(refstr != ""){
 gosub *close_window1
 return
 
-//-----Cソース(1bit)
+//-----save C(1bit)
 *csrc2color
 gosub *gcopy_0_to_1	//window0から1へコピー
 fbuf = ""
@@ -1843,16 +1827,16 @@ for chnum,0,chmax
 			c = (ginfo(16)+ginfo(17)+ginfo(18))/3 	// 256諧調
 			c = int(c/128)	// 256諧調 -> 2諧調
 			tmp <<= 1
-			if(c):tmp=tmp or 1
+			if(c):tmp |= 1
 		next
 		if(flag==0){
-			flag=1
+			flag = 1
 		}else{
 			fbuf += ","
 		}
 		fbuf += "0x"+strf("%02x",tmp)
 	next
-	fbuf += " /*font"+str(chnum+32)+"*/\n"
+	fbuf += " /*font"+str(chnum)+"*/\n"
 next
 fbuf += "};\n"
 
@@ -1920,18 +1904,18 @@ bmpy=0 //開始点y
 bmpw=w //幅[pixel]
 bmph=h //高さ[pixel]
 		
-headersize = (INFOHSIZE + FILEHSIZE + (4 * COL_MAX)) //ヘッダサイズ
-datasize = (bmpw * (BINPACK / BITPIX) * bmph)  //データサイズ
-totalsize = datasize + headersize //ファイル全体サイズ
+headersize = (INFOHSIZE + FILEHSIZE + (4 * COL_MAX)) //ヘッダsize
+datasize = (bmpw * (BINPACK / BITPIX) * bmph)  //データsize
+totalsize = datasize + headersize //ファイル全体size
 sdim fbuf,totalsize
 
 fp=0
     //---file header
 a= 0x42:gosub *savebyte
 a= 0x4D:gosub *savebyte
-a= totalsize:gosub *savelong //ファイル全体サイズ
+a= totalsize:gosub *savelong //ファイル全体size
 a= 0:gosub *savelong
-a= headersize:gosub *savelong  //ヘッダ全体サイズ
+a= headersize:gosub *savelong  //ヘッダ全体size
     //---info header
 a= INFOHSIZE:gosub *savelong  //header size
 a= bmpw:gosub *savelong   //width
@@ -1939,7 +1923,7 @@ a= bmph:gosub *savelong  //height
 a= 1:gosub *saveword          //plane
 a= BITPIX:gosub *saveword     //bitcount
 a= 0:gosub *savelong
-a= datasize:gosub *savelong  //画像データサイズ
+a= datasize:gosub *savelong  //画像データsize
 a= 0:gosub *savelong
 a= 0:gosub *savelong
 a= 0:gosub *savelong
