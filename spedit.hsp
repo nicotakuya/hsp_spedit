@@ -319,7 +319,7 @@ gosub *colorbar
 return
 //----------
 *loadgraphic
-screen 1,1200,640,mode	//window1作成
+screen 1,1024,1024,mode	//window1作成
 gsel 1
 title "load graphic"
 dialog "*",16,"file"
@@ -348,18 +348,18 @@ objprm 1,h
 
 gosub *bmpfilecheck
 return
-//----
+//---- BMPファイルの16色パレットの解読
 *bmpfilecheck
-if(instr(filename,0,".bmp")<0)and((instr(filename,0,".BMP")<0)):return
+if(instr(filename,0,".bmp")<0) and ((instr(filename,0,".BMP")<0)):return
+exist filename
+if strsize == -1:return  //ファイルが存在しなかった場合は終了
 sdim fbuf,8192
 bload filename,fbuf
 dim pal,16
-
-ptr=28
+ptr = 28
 depth = peek(fbuf,ptr)
-depth += peek(fbuf,ptr+1)<<8
-if (depth != 4):return
-
+depth += peek(fbuf,ptr+1) << 8
+if (depth != 4):return  // 16色カラーパレット以外は終了
 for i,0,16
     ptr = 54+(4*i)
 	c = peek(fbuf,ptr)
@@ -369,7 +369,6 @@ for i,0,16
 	pal(i)=c
 next
 gosub *drawpalette
-
 return
 
 //----
@@ -394,19 +393,25 @@ gsel 0
 gosub *gcopy_1_to_0
 gosub *close_window1
 return
-//----
+//---- famicom 2bit=4color
 *loadchrfile
-sdim fbuf,8192
-title "load chr(famicom chr) file"
+sdim fbuf,8192*2
+title "load chr(famicom chara) file"
 bload filename,fbuf
-ptr=0
-datasize=8192/16	// 総タイル数
-cellcnt=16
+ptr = 0
+chrdatasize = strsize	// ファイルsize
+datasize = chrdatasize/16	// 総タイル数
+cellcnt = 16 // 折り返しタイル数
 //----
 *loadchrsub
 dim gbuf,8,8
-//if((datasize/cellcnt)>64):datasize=cellcnt*64
-//datasize タイル数
+
+repeat
+	if((datasize / cellcnt)<=(512/8)):break
+	// ワーク画面に収まらない場合、折り返しを2倍に
+	cellcnt *= 2
+loop
+
 for chnum,0,datasize
 	for y,0,8
 		for x,0,8
@@ -451,17 +456,20 @@ title "load nes(famicom rom image) file"
 bload filename,fbuf	// nesファイル読み込み
 totalsize = strsize	// ファイルsize
 ptr = 16384*peek(fbuf,4) // prg size[16384 Byte]
-chrdatasize = 8192*peek(fbuf,5) // chr size[8192 Byte]
+chrdatasize = 8192*peek(fbuf,5) // chr size
 mapper = (peek(fbuf,6) >> 4)+(peek(fbuf,7) & $f0)
 datasize = int(chrdatasize/16)	// 総タイル数
-dialog "Mapper "+str(mapper)+"/ PRG="+str(ptr)+"BYTES / CHR="+str(chrdatasize)+"BYTES"
+tmpstr = "load NES Mapper "+str(mapper)
+tmpstr += "/ PRG="+str(ptr)+"BYTES"
+tmpstr += "/ CHR="+str(chrdatasize)+"BYTES"
+dialog tmpstr
 if(datasize==0){
 	dialog "キャラデータが存在しません"
 	return
 }
-
+filename += ".bmp"
 ptr += 16 //ヘッダsize追加
-cellcnt = 16
+cellcnt = 16	// 折り返しタイル数
 goto *loadchrsub
 
 //----------window1から0へコピー
@@ -634,7 +642,6 @@ return
 
 //-----------
 *sizeplus
-//sizew *= 2
 sizew += 8
 if(sizew>128):sizew=128
 gosub *putworksize
@@ -642,7 +649,6 @@ gosub *draw
 return
 //-----------
 *sizeminus
-//sizew /= 2
 sizew -= 8
 if(sizew<8):sizew=8
 gosub *putworksize
@@ -651,7 +657,6 @@ return
 
 //-----------
 *sizeplus2
-//sizeh *= 2
 sizeh += 8
 if(sizeh>128):sizeh=128
 gosub *putworksize
@@ -659,7 +664,6 @@ gosub *draw
 return
 //-----------
 *sizeminus2
-//sizeh /= 2
 sizeh -= 8
 if(sizeh<8):sizeh=8
 gosub *putworksize
@@ -1105,7 +1109,7 @@ pos x+200,y
 input tilepal,100,20,4
 y+=25
 pos x+16,y
-chkbox "類似パターンのVRAM節約",tilesame
+chkbox "Do not save the same pattern.",tilesame
 y+=25
 pos x,y
 button gosub "save binary(.bin) 4bit=16color(PC Engine BG)",*c16color_pce_bg
