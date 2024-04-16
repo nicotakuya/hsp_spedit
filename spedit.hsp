@@ -14,12 +14,17 @@
 
 w = 512	//bmp width [pixel]
 h = 512 //bmp height[pixel]
+canvasw = 512	// キャンバス最大サイズ
+canvash = 512	// キャンバス最大サイズ
+//canvash = 1024	// キャンバス最大サイズ(特大サイズ)
 toumei = 0 // transparent
 
 mode=0	// 初期化する画面モード
 sx=0	// ウィンドウの配置X（1ドット単位）
 sy=0	// ウィンドウの配置Y（1ドット単位）
-screen 0,1200,512+96,mode,sx,sy
+i=canvash
+if(i<640):i=640
+screen 0,1200,i,mode,sx,sy
 
 size=128
 buffer 2,size,size,mode	//copy/paste buffer
@@ -36,9 +41,9 @@ fy=0
 fxbak=-1
 fybak=-1
 
-color 255,0,0
-for i,0,512,16
-	line 512,i,512+7,i
+color 255,0,0	// ルーラー
+for i,0,canvash,16
+	line canvasw,i,canvasw+7,i
 next
 
 sizew = 16		//worksize
@@ -82,18 +87,17 @@ x1=fx-1:y1=fy-1:x2=fx+w:y2=fy+h:gosub *box
 
 objsize 128,24
 reqw = w
-pos 256+64+32,512+8
+pos 522+64,580
 input reqw,64,20,4 
 reqh = h
-pos 256+160+32,512+8
+pos 522+160,580
 input reqh,64,20,4 
-pos 320+32,512+8+20+8
+pos 522+230,580
 button gosub "Resize Canvas",*resize_canvas
 
 btnx = 1056
-
 objsize 64,24
-x=btnx +32:y+=56+24:pos x,y
+x=btnx+32:y+=56:pos x,y
 button gosub "↑",*viewup
 x=btnx:y += 24:pos x,y
 button gosub "←",*viewprev
@@ -110,33 +114,37 @@ x=btnx:y += 24:pos x,y
 button gosub "zoom y+",*sizeminus2
 x += 64:pos x,y
 button gosub "zoom y-",*sizeplus2
+x = btnx:y += 24:pos x,y
+objsize 128,24
+button gosub "transparent on/off",*maskonoff
+objsize 64,24
 
-x=btnx:y += 36:pos x,y
+x = btnx:y += 36:pos x,y
 button gosub "turn",*turn
-x+=64:pos x,y
+x +=64:pos x,y
 button gosub "mirror",*mirror
-x=btnx:y += 24:pos x,y
+x = btnx:y += 24:pos x,y
 
 button gosub "dark",*dark
-x+=64:pos x,y
+x += 64:pos x,y
 button gosub "light",*light
-x=btnx:y += 24:pos x,y
+x = btnx:y += 24:pos x,y
 
 button gosub "←shift",*shift1
 x += 64:pos x,y
 button gosub "shift→",*shift2
-x=btnx:y += 24:pos x,y
+x = btnx:y += 24:pos x,y
 button gosub "↑shift",*shift3
 x += 64:pos x,y
 button gosub "shift↓",*shift4
-x=btnx:y += 24:pos x,y
+x = btnx:y += 24:pos x,y
 button gosub "monotone",*monotone
 x += 64:pos x,y
 button gosub "invert",*invert
-x=btnx:y += 36:pos x,y
+x = btnx:y += 36:pos x,y
 
 button gosub "pen size",*paint
-x=btnx:y += 24:pos x,y
+x = btnx:y += 24:pos x,y
 button gosub "変換元色",*srccol
 x += 64:pos x,y
 button gosub "色変換",*workcolorchange
@@ -167,13 +175,10 @@ button gosub "convert save",*filesave_csrc
 y += 24:pos x,y
 button gosub "load",*fileload
 
-pos 128+32,512+20+16
-button gosub "transparent on/off",*maskonoff
-
 color 0,0,0
-boxf 256+32,512+8,512,512+32
+boxf 522,580,522+224,580+24
 color 255,255,255
-pos 256+32,512+8
+pos 522,580
 print "Canvas "
 
 gosub *fileload
@@ -256,7 +261,7 @@ color colr,colg,colb
 boxf colx-16,coly+1,colx-2,coly+46
 return
 
-//----------
+//----------マウスのleft button
 *click1
 if (y<48){
 	if (x>=palx)and(x<(palx+256)){
@@ -283,13 +288,14 @@ if (y<48){
 	}
 }	
 	
-if (x<w)and(y<h) {
+if (x<w)and(y<h) { // canvasをクリック
 	grid = 8
 	fx=int(x/grid)*grid
 	fy=int(y/grid)*grid
 	gosub *draw
 	return
 }
+// workをクリック
 workw = zoom*sizew
 workh = zoom*sizeh
 if (x<gx)or(y<gy)or(x>=(gx+workw))or(y>=(gy+workh)):return
@@ -309,7 +315,7 @@ if (paintflag > 0) {
 }
 return
 
-//----------
+//----------マウスのright button
 *click2
 pget x,y
 colr = ginfo(16)
@@ -383,10 +389,12 @@ boxf 0,0,reqw-1,reqh-1
 
 gsel 1
 pos 0,0
-x1=0:y1=0
+x1=0:y1=0 // canvas始点
 gcopy 0,x1,y1,w,h
 w = reqw
 h = reqh
+if(w > canvasw):w=canvasw
+if(h > canvash):h=canvash
 if(toumei):gosub *black2transparent
 
 gsel 0
@@ -395,7 +403,7 @@ gosub *close_window1
 return
 //---- famicom 2bit=4color
 *loadchrfile
-sdim fbuf,8192*2
+sdim fbuf,8192*4 // 4BANK
 title "load chr(famicom chara) file"
 bload filename,fbuf
 ptr = 0
@@ -407,8 +415,8 @@ cellcnt = 16 // 折り返しタイル数
 dim gbuf,8,8
 
 repeat
-	if((datasize / cellcnt)<=(512/8)):break
-	// ワーク画面に収まらない場合、折り返しを2倍に
+	if((datasize / cellcnt)<=(canvash/8)):break
+	// キャンバス画面に収まらない場合、折り返しを2倍に
 	cellcnt *= 2
 loop
 
@@ -476,7 +484,7 @@ goto *loadchrsub
 *gcopy_1_to_0
 gsel 0,1	//window0に切り替え
 color 0,0,64
-boxf 0,0,512,512
+boxf 0,0,canvasw,canvash	// canvas最大サイズ
 pos 0,0
 gcopy 1,0,0,w,h
 gsel 1,-1	//window1非表示
@@ -488,7 +496,7 @@ return
 screen 1,w,h,mode	//window1を作成
 gsel 1
 pos 0,0
-x1=0:y1=0
+x1=0:y1=0	// canvas始点
 gcopy 0,x1,y1,w,h
 if(toumei):gosub *transparent2black
 return
@@ -555,9 +563,9 @@ if((fx!=fxbak)or(fy!=fybak)){
 	fxbak=fx
 	fybak=fy
 	color 0,0,0
-	boxf 0,520,128,520+24
+	boxf 522,608,522+128,608+24
 	color 255,255,255
-	pos 16,520
+	pos 522+16,608+0
 	print "x="+str(fx)+" , y="+str(fy)
 	
 	if(fy<128){
@@ -673,14 +681,14 @@ return
 //----
 *putworksize
 if(sizew>sizeh){
-	zoom=512/sizew
+	zoom = 512/sizew
 }else{
-	zoom=512/sizeh
+	zoom = 512/sizeh
 }
 color 0,0,0
-boxf 1056,56,1056+128,56+22
+boxf 660,608,660+128,608+24
 color 255,255,255
-pos 1056,56
+pos 660,608
 print "WORKSIZE "+str(sizew)+"x"+str(sizeh)
 return
 
@@ -1147,7 +1155,7 @@ dim gbuf,8,8
 // 8*8pixel * 4bitcolor / 8 = 32 Bytes(16 Word)
 //32*28cell * 32Byte = 28672 Byte(14336 Word)
 
-chmax = int(w*h/(8*8))	//tile count
+chmax = int(w*h/(8*8))	// パターン数
 cellcnt = int(w/8)	// tile width
 sdim fbuf,32*chmax // file buffer(pattern)
 sdim tmppat,32 // temp buffer(8x8pixel x 1pattern)
@@ -1251,7 +1259,7 @@ if(cmax > 16):return
 
 dim gbuf,16,16
 
-chmax = int(w*h/(16*16))
+chmax = int(w*h/(16*16)) // パターン数
 cellcnt = int(w/16)
 // 16*16pixel * 4bitcolor / 8 = 128 Bytes
 sdim fbuf,128*chmax // filesize
@@ -1327,7 +1335,7 @@ dim gbuf,8,8
 // 8*8pixel * 4bitcolor / 8 = 32 Bytes(16Word)
 //32*28cell * 32Byte = 28672 Byte(14336 Word)
 
-chmax = int(w*h/(8*8))
+chmax = int(w*h/(8*8)) // パターン数
 cellcnt = int(w/8)
 sdim fbuf,32*chmax // filesize
 
@@ -1411,7 +1419,7 @@ dim gbuf,8,8
 // 8*8pixel * 4bitcolor / 8 = 32 Bytes(16 Word)
 //32*28cell * 32Byte = 28672 Byte(14336 Word)
 
-chmax = int(w*h/(8*8))	//tile count
+chmax = int(w*h/(8*8))	// パターン数
 cellcnt = int(w/8)	// tile width
 sdim fbuf,32*chmax // file buffer(pattern)
 sdim tmppat,32 // temp buffer(8x8pixel x 1pattern)
@@ -1722,7 +1730,7 @@ fbuf += "const char tile[] = {\n"
 dim gbuf,8,8
 
 cellcnt = int(w/8)
-chmax = int(w*h/(8*8))
+chmax = int(w*h/(8*8)) // パターン数
 flag = 0
 for chnum,0,chmax
 	x1 = (chnum \ cellcnt)*8
@@ -1771,7 +1779,7 @@ fbuf += "const char pattern[] = {\n"
 dim gbuf,8,8
 
 cellcnt = int(w/8)
-chmax = int(w*h/(8*8))
+chmax = int(w*h/(8*8)) // パターン数
 flag = 0
 for chnum,0,chmax
 	x1 = (chnum \ cellcnt)*8
@@ -1819,7 +1827,7 @@ fbuf = ""
 fbuf += "const char chara[] = {\n"
 
 cellcnt = int(w/8)
-chmax = int(w*h/(8*8))
+chmax = int(w*h/(8*8)) // パターン数
 flag=0
 for chnum,0,chmax
 	x1 = (chnum \ cellcnt)*8
@@ -1858,7 +1866,7 @@ return
 gosub *gcopy_0_to_1	//window0から1へコピー
 
 cellcnt = int(w/8)
-chmax = int(w*h/(8*8))
+chmax = int(w*h/(8*8)) // パターン数
 fp = chmax*16	//1タイル16BYTES
 sdim fbuf,fp
 for tmp,0,fp
