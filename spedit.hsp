@@ -121,10 +121,11 @@ objsize 64,24
 
 x = btnx:y += 36:pos x,y
 button gosub "turn",*turn
-x +=64:pos x,y
-button gosub "mirror",*mirror
 x = btnx:y += 24:pos x,y
-
+button gosub "mirror H",*mirror_h
+x +=64:pos x,y
+button gosub "mirror V",*mirror_v
+x = btnx:y += 24:pos x,y
 button gosub "dark",*dark
 x += 64:pos x,y
 button gosub "light",*light
@@ -851,15 +852,20 @@ if((fy+sizeh)>h):fy=0
 gosub *draw
 gosub *keyoff
 return
-
+//----
+*get_rgb
+gsel 0
+pget fx+x,fy+y
+r=ginfo(16)
+g=ginfo(17)
+b=ginfo(18)
+return	
 //----
 *turn
 redraw 0
 for y,0,sizeh
 	for x,0,sizew
-		gsel 0
-		pget fx+x,fy+y
-		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		gosub *get_rgb
 		gsel 2
 		color r,g,b
 		pset (sizew-1)-y,x
@@ -871,17 +877,31 @@ gcopy 2,0,0,sizew,sizeh
 gosub *draw
 return
 
-//----
-*mirror
+//---- mirror H
+*mirror_h
 redraw 0
 for y,0,sizeh
 	for x,0,sizew
-		gsel 0
-		pget fx+x,fy+y
-		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		gosub *get_rgb
 		gsel 2
 		color r,g,b
 		pset (sizew-1)-x,y
+	next
+next
+gsel 0
+pos fx,fy
+gcopy 2,0,0,sizew,sizeh
+gosub *draw
+return
+//---- mirror V
+*mirror_v
+redraw 0
+for y,0,sizeh
+	for x,0,sizew
+		gosub *get_rgb
+		gsel 2
+		color r,g,b
+		pset x,(sizeh-1)-y
 	next
 next
 gsel 0
@@ -896,13 +916,13 @@ redraw 0
 gsel 0
 for y,0,sizeh
 	for x,0,sizew
-		pget fx+x,fy+y
-		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
-		if(r==0)and(g==128)and(b==128){
+		gosub *get_rgb
+		if((toumei==1)and(r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
+			// transparent
 		}else{
-			r-=8
-			g-=8
-			b-=8
+			r -= 8
+			g -= 8
+			b -= 8
 			if(r<8):r=8
 			if(g<8):g=8
 			if(b<8):b=8
@@ -920,13 +940,13 @@ redraw 0
 gsel 0
 for y,0,sizeh
 	for x,0,sizew
-		pget fx+x,fy+y
-		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
-		if(r==0)and(g==128)and(b==128){
+		gosub *get_rgb
+		if((toumei==1)and(r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
+			// transparent
 		}else{
-			r+=8
-			g+=8
-			b+=8
+			r += 8
+			g += 8
+			b += 8
 			if(r>255):r=255
 			if(g>255):g=255
 			if(b>255):b=255
@@ -994,8 +1014,7 @@ return
 redraw 0
 for y,0,sizeh
 	for x,0,sizew
-		pget fx+x,fy+y
-		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
+		gosub *get_rgb
 		if((toumei==1)and(r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
 			// transparent
 			_continue
@@ -1012,9 +1031,8 @@ return
 redraw 0
 for y,0,sizeh
 	for x,0,sizew
-		pget fx+x,fy+y
-		r=ginfo(16) : g=ginfo(17) : b=ginfo(18)
-		if((r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
+		gosub *get_rgb
+		if((toumei==1)and(r==TOUMEI_R)and(g==TOUMEI_G)and(b==TOUMEI_B)){
 			// transparent
 			_continue
 		}
