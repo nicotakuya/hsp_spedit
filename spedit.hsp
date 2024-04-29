@@ -98,13 +98,13 @@ button gosub "Resize Canvas",*resize_canvas
 btnx = 1056
 objsize 64,24
 x=btnx+32:y+=56:pos x,y
-button gosub "↑",*viewup
+button gosub "[↑]",*viewup
 x=btnx:y += 24:pos x,y
-button gosub "←",*viewprev
+button gosub "[←]",*viewleft
 x += 64:pos x,y
-button gosub "→",*viewnext
+button gosub "[→]",*viewright
 x=btnx+32:y += 24:pos x,y
-button gosub "↓",*viewdown
+button gosub "[↓]",*viewdown
 
 x=btnx:y += 36:pos x,y
 button gosub "zoom x+",*sizeminus
@@ -150,11 +150,11 @@ x += 64:pos x,y
 button gosub "色変換",*workcolorchange
 
 x=btnx:y += 24:pos x,y
-button gosub "copy",*buffcopy
+button gosub "copy[C]",*buffcopy
 x += 64:pos x,y
-button gosub "cut",*buffcut
+button gosub "cut[X]",*buffcut
 x=btnx:y += 24:pos x,y
-button gosub "paste",*buffpaste
+button gosub "paste[V]",*buffpaste
 
 x=btnx:y += 24:pos x,y
 button gosub "all clear",*allclr
@@ -185,14 +185,50 @@ gosub *fileload
 
 paintflag=0	//ブラシ
 
-while 1
+repeat
 	wait 10	
 	x = mousex : y = mousey
 	getkey k,1
 	if (k):gosub *click1  //マウスのleft button
 	getkey k,2
 	if (k):gosub *click2  //マウスのright button
-wend
+
+	getkey k, 'C'
+	if( k ):gosub *buffcopy  //copy
+	getkey k, 'V'
+	if( k ):gosub *buffpaste //paste
+	getkey k, 'X'
+	if( k ):gosub *buffcut   //cut
+    getkey k, 37    // カーソルキー[←]
+	if( k ):gosub *viewleft
+    getkey k, 38    // カーソルキー[↑]
+	if( k ):gosub *viewup
+    getkey k, 39    // カーソルキー[→]
+	if( k ):gosub *viewright
+    getkey k, 40    // カーソルキー[↓]	
+	if( k ):gosub *viewdown
+loop
+end
+//-------キー入力のOFF待ち
+*keyoff
+repeat
+	getkey k, 'C'
+	if( k ):continue
+	getkey k, 'X'
+	if( k ):continue
+	getkey k, 'V'
+	if( k ):continue
+	getkey k, 37
+	if( k ):continue
+	getkey k, 38
+	if( k ):continue
+	getkey k, 39
+	if( k ):continue
+	getkey k, 40
+	if( k ):continue
+	break
+loop
+return
 //-------
 *printfilename
 ptr = strlen(filename)
@@ -749,6 +785,7 @@ gsel 2
 pos 0,0
 gcopy 0,fx,fy,sizew,sizeh
 gsel 0
+gosub *keyoff
 return
 
 //------------
@@ -764,6 +801,7 @@ if(toumei==1){
 }
 boxf fx,fy,fx+sizew-1,fy+sizeh-1
 gosub *draw
+gosub *keyoff
 return
 
 //----------
@@ -772,10 +810,11 @@ gsel 0
 pos fx,fy
 gcopy 2,0,0,sizew,sizeh
 gosub *draw
+gosub *keyoff
 return
 
 //----------
-*viewprev
+*viewleft
 fx -= sizew
 if(fx<0){
 	fx=w-sizew
@@ -783,9 +822,10 @@ if(fx<0){
 	if(fy<0):fy=h-sizeh
 }
 gosub *draw
+gosub *keyoff
 return
 //----------
-*viewnext
+*viewright
 fx += sizew
 if((fx+sizew)>w){
 	fx=0
@@ -793,6 +833,7 @@ if((fx+sizew)>w){
 	if((fy+sizeh)>h):fy=0
 }
 gosub *draw
+gosub *keyoff
 return
 	
 //----------
@@ -800,6 +841,7 @@ return
 fy-=sizeh
 if(fy<0):fy=h-sizeh
 gosub *draw
+gosub *keyoff
 return
 
 //--------
@@ -807,6 +849,7 @@ return
 fy+=sizeh
 if((fy+sizeh)>h):fy=0
 gosub *draw
+gosub *keyoff
 return
 
 //----
@@ -1756,7 +1799,7 @@ for chnum,0,chmax
 			next
 			if(flag > 0):fbuf += ","
 			flag++
-			fbuf += "0x"+strf("%02x",tmp)
+			fbuf += "0x"+strf("%02X",tmp)
 		next
 	next
 	fbuf += " /*chara"+str(chnum)+"*/\n"
@@ -1805,7 +1848,7 @@ for chnum,0,chmax
 			next
 			if(flag > 0):fbuf += ","
 			flag++
-			fbuf += "0x"+strf("%02x",tmp)
+			fbuf += "0x"+strf("%02X",tmp)
 		next
 	next
 	fbuf += " /*chara"+str(chnum)+"*/\n"
@@ -1846,7 +1889,7 @@ for chnum,0,chmax
 		}else{
 			fbuf += ","
 		}
-		fbuf += "0x"+strf("%02x",tmp)
+		fbuf += "0x"+strf("%02X",tmp)
 	next
 	fbuf += " /*font"+str(chnum)+"*/\n"
 next
