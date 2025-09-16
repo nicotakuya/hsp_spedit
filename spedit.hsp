@@ -184,8 +184,8 @@ print "Canvas "
 
 gosub *fileload
 
-paintflag=0	//ブラシ
-
+paintflag = 0	//ブラシ
+keydisable = 0 
 repeat
 	wait 10	
 	x = mousex : y = mousey
@@ -193,7 +193,7 @@ repeat
 	if (k):gosub *click1  //マウスのleft button
 	getkey k,2
 	if (k):gosub *click2  //マウスのright button
-
+    if (keydisable):continue
 	getkey k, 'C'
 	if( k ):gosub *buffcopy  //copy
 	getkey k, 'V'
@@ -364,12 +364,14 @@ return
 *loadgraphic
 screen 1,1024,1024,mode	//window1作成
 gsel 1
+keydisable = 1
 title "load graphic"
 dialog "*",16,"file"
 if(stat != 1){
   	filename = ""	//cancel
   	gsel 1,-1	//window1非表示
 	gsel 0
+    keydisable = 0
 	return
 }else{
 	filename = refstr
@@ -390,6 +392,7 @@ objprm 0,w
 objprm 1,h
 
 gosub *bmpfilecheck
+keydisable = 0
 return
 //---- BMPファイルの16色パレットの解読
 *bmpfilecheck
@@ -437,6 +440,12 @@ if(toumei):gosub *black2transparent
 gsel 0
 gosub *gcopy_1_to_0
 gosub *close_window1
+
+if sizew > w:sizew = w
+if sizeh > h:sizeh = h
+gosub *putworksize
+gosub *draw
+
 return
 //---- famicom 2bit=4color
 *loadchrfile
@@ -553,6 +562,7 @@ if (filename!=""){
 	}
 }
 // save as
+keydisable = 1
 dialog "bmp",17,"BMPで保存"
 if(refstr != ""){
 	filename = refstr
@@ -563,6 +573,7 @@ if(refstr != ""){
 }
 gosub *close_window1
 gosub *printfilename
+keydisable = 0
 return
 
 //----色変換
@@ -688,14 +699,12 @@ return
 //-----------
 *sizeplus
 sizew += 8
-if(sizew>128):sizew=128
 gosub *putworksize
 gosub *draw
 return
 //-----------
 *sizeminus
 sizew -= 8
-if(sizew<8):sizew=8
 gosub *putworksize
 gosub *draw
 return
@@ -703,20 +712,24 @@ return
 //-----------
 *sizeplus2
 sizeh += 8
-if(sizeh>128):sizeh=128
 gosub *putworksize
 gosub *draw
 return
 //-----------
 *sizeminus2
 sizeh -= 8
-if(sizeh<8):sizeh=8
 gosub *putworksize
 gosub *draw
 return
 
 //----
 *putworksize
+if(sizew<8):sizew=8
+if(sizew>128):sizew=128
+if(sizeh<8):sizeh=8
+if(sizeh>128):sizeh=128
+if(reqw>0) and (sizew>reqw):sizew=reqw
+if(reqh>0) and (sizeh>reqh):sizeh=reqh
 if(sizew>sizeh){
 	zoom = 512/sizew
 }else{
@@ -1134,7 +1147,7 @@ pal(15)= 0xffffff //15:white
 cmax = 16
 return
 
-//----------
+//----------Convert
 *filesave_csrc
 screen 1,480,400
 objsize 300,24
@@ -1284,6 +1297,7 @@ repeat
 	ptr--
 loop
 
+keydisable = 1
 fname = strmid(filename,0,ptr)+"_pattern.bin"
 dialog fname+"で保存",2
 if (stat==6){	//はい
@@ -1310,6 +1324,7 @@ if (stat==6){	//はい
 }
 
 gosub *close_window1
+keydisable = 0
 return
 
 //---------pc engine sprite
@@ -1358,6 +1373,7 @@ for chnum,0,chmax
 	next
 next
 
+keydisable = 1
 fname="sp_pattern.bin"
 dialog fname+"で保存",2
 if (stat==6){	//はい
@@ -1383,6 +1399,7 @@ if (stat==6){	// yes
 	bsave fname,fbuf,fp
 }
 gosub *close_window1
+keydisable = 0
 return
 
 //---------pc engine TILE
@@ -1441,6 +1458,7 @@ for chnum,0,chmax
 	next
 next
 
+keydisable = 1
 fname="map_pattern.bin"
 dialog fname+"で保存",2
 if (stat==6){	// yes
@@ -1467,6 +1485,7 @@ if (stat==6){	//はい
 }
 
 gosub *close_window1
+keydisable = 0
 return
 
 //---------pc engine BG
@@ -1567,6 +1586,7 @@ tmpstr+="Color="+str(cmax)+" ,"
 tmpstr+="BAT="+str(batsize)+" Byte"
 dialog tmpstr
 
+keydisable = 1
 fname="bg_pattern.bin"
 dialog fname+"で保存",2
 if (stat==6){	//はい
@@ -1614,6 +1634,7 @@ if (stat==6){	//はい
 }
 
 gosub *close_window1
+keydisable = 0
 return
 //---------pc engine BG(240色 TEST pattern)
 *c16color_pce_bgtest
@@ -1652,6 +1673,7 @@ for chnum,0,chmax
 	next
 next
 
+keydisable = 1
 fname="bg_pattern.bin"
 dialog fname+"で保存",2
 if (stat==6){	//はい
@@ -1691,6 +1713,7 @@ if (stat==6){	//はい
 }
 
 gosub *close_window1
+keydisable = 0
 return
 
 //---------pc engine
@@ -1774,12 +1797,14 @@ for i,0,16
 next
 fbuf += "\n};\n"
 
+keydisable = 1
 dialog "c",17,"cで保存"
 if(refstr != ""){
 	fname = refstr
 	bsave fname,fbuf,strlen(fbuf)
 }
 gosub *close_window1
+keydisable = 0
 return
 
 //---------header fileで保存(gameboy 4 color)
@@ -1824,12 +1849,14 @@ for chnum,0,chmax
 next
 fbuf += "};\n"
 
+keydisable = 1
 dialog "h",17,"headerで保存"
 if(refstr != ""){
 	fname = refstr
 	bsave fname,fbuf,strlen(fbuf)
 }
 gosub *close_window1
+keydisable = 0
 return
 
 //---------header fileで保存(famicom 4 color)
@@ -1873,12 +1900,14 @@ for chnum,0,chmax
 next
 fbuf += "};\n"
 
+keydisable = 1
 dialog "h",17,"headerで保存"
 if(refstr != ""){
 	fname = refstr
 	bsave fname,fbuf,strlen(fbuf)
 }
 gosub *close_window1
+keydisable = 0
 return
 
 //-----save C(1bit)
@@ -1913,13 +1942,14 @@ for chnum,0,chmax
 next
 fbuf += "};\n"
 
+keydisable = 1
 dialog "h",17,"headerで保存"
 if(refstr != ""){
 	fname = refstr
 	bsave fname,fbuf,strlen(fbuf)
 }
-
 gosub *close_window1
+keydisable = 0
 return
 
 //---------2bit=4color binary保存
@@ -1960,12 +1990,14 @@ for chnum,0,chmax
 	next
 next
 
+keydisable = 1
 dialog "chr",17,"chrで保存"
 if(refstr != ""){
 	fname = refstr
 	bsave fname,fbuf,fp
 }
 gosub *close_window1
+keydisable = 0
 return
 	
 //--------------16色 BMP save
@@ -2049,6 +2081,7 @@ for y,bmph-1,-1,-1
 	next
 next
 
+keydisable = 1
 dialog "bmp",17,"16色BMPで保存"
 if(refstr!=""){
 	fname=refstr
@@ -2058,6 +2091,7 @@ if(refstr!=""){
 	bsave fname,fbuf,fp
 }
 gosub *close_window1
+keydisable = 0
 return
     
 *savebyte
